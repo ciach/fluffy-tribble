@@ -55,12 +55,12 @@ async def main() -> int:
 
         # Initialize and run the main agent workflow
         from .agent import QAOperatorAgent
-        
+
         agent = QAOperatorAgent(config)
         await agent.initialize()
-        
+
         logger.info("QA Operator agent initialized successfully")
-        
+
         # TODO: Add CLI argument parsing for test specifications
         # For now, this is a placeholder for the agent integration
         logger.info("Agent ready for workflow execution")
@@ -113,4 +113,5 @@ async def main() -> int:
 
 if __name__ == "__main__":
     import asyncio
+
     sys.exit(asyncio.run(main()))
