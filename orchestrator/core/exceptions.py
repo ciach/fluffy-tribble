@@ -150,3 +150,44 @@ class PlanningError(QAOperatorError):
                 "planning_stage": planning_stage,
             }
         )
+
+
+class GitOperationError(QAOperatorError):
+    """Raised when Git operations fail."""
+
+    def __init__(
+        self,
+        message: str,
+        operation: Optional[str] = None,
+        repo_path: Optional[str] = None,
+        files_affected: Optional[list] = None,
+        commit_message: Optional[str] = None,
+        remote: Optional[str] = None,
+        branch: Optional[str] = None,
+        pr_title: Optional[str] = None,
+        original_error: Optional[str] = None,
+        fallback_error: Optional[str] = None,
+    ):
+        super().__init__(message, "GIT_OPERATION_FAILED")
+        self.operation = operation
+        self.repo_path = repo_path
+        self.files_affected = files_affected or []
+        self.commit_message = commit_message
+        self.remote = remote
+        self.branch = branch
+        self.pr_title = pr_title
+        self.original_error = original_error
+        self.fallback_error = fallback_error
+        self.context.update(
+            {
+                "operation": operation,
+                "repo_path": repo_path,
+                "files_affected": files_affected,
+                "commit_message": commit_message,
+                "remote": remote,
+                "branch": branch,
+                "pr_title": pr_title,
+                "original_error": original_error,
+                "fallback_error": fallback_error,
+            }
+        )

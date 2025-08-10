@@ -247,3 +247,46 @@ class ValidationResult(BaseModel):
     def has_warnings(self) -> bool:
         """Check if there are validation warnings."""
         return len(self.warnings) > 0
+
+
+class GitOperationRequest(BaseModel):
+    """Model for Git operation requests."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    operation: str = Field(..., description="Git operation type")
+    files: Optional[List[str]] = Field(None, description="Files to operate on")
+    message: Optional[str] = Field(None, description="Commit message")
+    branch: Optional[str] = Field(None, description="Branch name")
+    remote: Optional[str] = Field("origin", description="Remote name")
+    workflow_id: Optional[str] = Field(None, description="Workflow correlation ID")
+
+    @validator("operation")
+    def validate_operation(cls, v):
+        valid_ops = [
+            "status", "add", "commit", "push", "pull", "branch", 
+            "checkout", "merge", "diff", "log", "remote"
+        ]
+        if v not in valid_ops:
+            raise ValueError(f"Operation must be one of: {valid_ops}")
+        return v
+
+
+class GitBranchInfo(BaseModel):
+    """Information about a Git branch."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(..., description="Branch name")
+    is_current: bool = Field(..., description="Whether this is the current branch")
+    is_remote: bool = Field(False, description="Whether this is a remote branch")
+    last_commit: Optional[str] = Field(None, description="Last commit hash")
+    ahead_behind: Optional[Dict[str, int]] = Field(
+        None, description="Commits ahead/behind tracking branch"
+    )
+
+    @validator("name")
+    def validate_name(cls, v):
+        if not v or not v.strip():
+            raise ValueError("Branch name cannot be empty")
+        return v.strip()
