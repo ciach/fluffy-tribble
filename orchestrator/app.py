@@ -15,7 +15,7 @@ from .core.workflow import WorkflowManager
 from .core.exceptions import QAOperatorError, ValidationError
 
 
-def main() -> int:
+async def main() -> int:
     """
     Main entry point for QA Operator.
 
@@ -53,9 +53,17 @@ def main() -> int:
             },
         )
 
-        # TODO: Initialize and run the main agent workflow
-        # This will be implemented in subsequent tasks
-        logger.info("QA Operator infrastructure initialized successfully")
+        # Initialize and run the main agent workflow
+        from .agent import QAOperatorAgent
+        
+        agent = QAOperatorAgent(config)
+        await agent.initialize()
+        
+        logger.info("QA Operator agent initialized successfully")
+        
+        # TODO: Add CLI argument parsing for test specifications
+        # For now, this is a placeholder for the agent integration
+        logger.info("Agent ready for workflow execution")
 
         # End workflow successfully
         workflow_manager.end_workflow(success=True)
@@ -104,4 +112,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    import asyncio
+    sys.exit(asyncio.run(main()))
