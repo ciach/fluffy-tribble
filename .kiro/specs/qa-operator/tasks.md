@@ -8,21 +8,21 @@
   - Create base exception classes for different error types
   - _Requirements: 8.1, 8.2, 8.5_
 
-- [ ] 2. Implement MCP integration layer
-  - [ ] 2.1 Create MCP connection manager with retry logic
+- [x] 2. Implement MCP integration layer
+  - [x] 2.1 Create MCP connection manager with retry logic
     - Write MCP server connection handling with exponential backoff retry
     - Implement connection health monitoring and automatic reconnection
     - Create configuration loader for mcp.config.json
     - _Requirements: 4.1, 4.4, 4.5_
 
-  - [ ] 2.2 Implement Playwright MCP client wrapper
+  - [x] 2.2 Implement Playwright MCP client wrapper
     - Create wrapper class for Playwright MCP tool calls
     - Implement browser automation methods (navigate, click, fill, screenshot)
     - Add test execution methods with headed/headless mode support
     - Implement artifact collection (traces, screenshots, console logs, network)
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 4.3_
 
-  - [ ] 2.3 Implement Filesystem MCP client wrapper
+  - [x] 2.3 Implement Filesystem MCP client wrapper
     - Validate MCP server is configured with sandbox restricted to e2e/ directory
     - Create safe file operations wrapper with path validation and restriction enforcement
     - Implement test file reading, writing, and backup functionality
