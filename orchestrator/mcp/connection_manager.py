@@ -11,10 +11,12 @@ import logging
 import time
 from pathlib import Path
 from typing import Dict, Any, Optional, List
-from dataclasses import dataclass
 from enum import Enum
 
+from pydantic import BaseModel, Field, validator, ConfigDict
+
 from ..core.exceptions import MCPConnectionError, ValidationError
+from .models import MCPToolCall, MCPToolResponse
 
 
 class ConnectionStatus(Enum):
@@ -27,30 +29,48 @@ class ConnectionStatus(Enum):
     RECONNECTING = "reconnecting"
 
 
-@dataclass
-class MCPServerConfig:
+class MCPServerConfig(BaseModel):
     """Configuration for an MCP server."""
+    model_config = ConfigDict(extra='forbid')
+    
+    name: str = Field(..., description="Server name identifier")
+    command: str = Field(..., description="Command to execute the server")
+    args: List[str] = Field(default_factory=list, description="Command arguments")
+    env: Optional[Dict[str, str]] = Field(None, description="Environment variables")
+    timeout: int = Field(30, ge=1, le=300, description="Connection timeout in seconds")
+    max_retries: int = Field(3, ge=0, le=10, description="Maximum retry attempts")
+    retry_delay: float = Field(1.0, ge=0.1, le=60.0, description="Initial retry delay in seconds")
+    retry_backoff: float = Field(2.0, ge=1.0, le=10.0, description="Retry backoff multiplier")
 
-    name: str
-    command: str
-    args: List[str]
-    env: Optional[Dict[str, str]] = None
-    timeout: int = 30
-    max_retries: int = 3
-    retry_delay: float = 1.0
-    retry_backoff: float = 2.0
+    @validator('name')
+    def validate_name(cls, v):
+        if not v or not v.strip():
+            raise ValueError("Server name cannot be empty")
+        return v.strip()
+
+    @validator('command')
+    def validate_command(cls, v):
+        if not v or not v.strip():
+            raise ValueError("Command cannot be empty")
+        return v.strip()
 
 
-@dataclass
-class ConnectionHealth:
+class ConnectionHealth(BaseModel):
     """Health status of an MCP connection."""
+    model_config = ConfigDict(extra='forbid')
+    
+    server_name: str = Field(..., description="Server name")
+    status: ConnectionStatus = Field(..., description="Current connection status")
+    last_connected: Optional[float] = Field(None, description="Timestamp of last successful connection")
+    last_error: Optional[str] = Field(None, description="Last error message")
+    retry_count: int = Field(0, ge=0, description="Current retry attempt count")
+    next_retry: Optional[float] = Field(None, description="Timestamp for next retry attempt")
 
-    server_name: str
-    status: ConnectionStatus
-    last_connected: Optional[float] = None
-    last_error: Optional[str] = None
-    retry_count: int = 0
-    next_retry: Optional[float] = None
+    @validator('server_name')
+    def validate_server_name(cls, v):
+        if not v or not v.strip():
+            raise ValueError("Server name cannot be empty")
+        return v.strip()
 
 
 class MCPConnectionManager:
