@@ -10,7 +10,7 @@ from datetime import datetime
 
 class TaskType(Enum):
     """Types of tasks that can be routed to different models."""
-    
+
     PLANNING = "planning"
     DEBUGGING = "debugging"
     DRAFTING = "drafting"
@@ -20,7 +20,7 @@ class TaskType(Enum):
 
 class ModelProvider(Enum):
     """Available model providers."""
-    
+
     OPENAI = "openai"
     OLLAMA = "ollama"
 
@@ -28,7 +28,7 @@ class ModelProvider(Enum):
 @dataclass
 class ModelResponse:
     """Response from a model interaction."""
-    
+
     content: str
     provider: ModelProvider
     model_name: str
@@ -36,7 +36,7 @@ class ModelResponse:
     timestamp: datetime
     usage: Optional[Dict[str, Any]] = None
     metadata: Optional[Dict[str, Any]] = None
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for logging."""
         return {
@@ -46,14 +46,14 @@ class ModelResponse:
             "task_type": self.task_type.value,
             "timestamp": self.timestamp.isoformat(),
             "usage": self.usage,
-            "metadata": self.metadata
+            "metadata": self.metadata,
         }
 
 
 @dataclass
 class ModelConfig:
     """Configuration for a specific model."""
-    
+
     provider: ModelProvider
     model_name: str
     api_key: Optional[str] = None
@@ -62,7 +62,7 @@ class ModelConfig:
     temperature: float = 0.7
     timeout: int = 60
     max_retries: int = 3
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for logging (excluding sensitive data)."""
         return {
@@ -72,18 +72,18 @@ class ModelConfig:
             "max_tokens": self.max_tokens,
             "temperature": self.temperature,
             "timeout": self.timeout,
-            "max_retries": self.max_retries
+            "max_retries": self.max_retries,
         }
 
 
 @dataclass
 class ModelRoutingRule:
     """Rule for routing tasks to specific models."""
-    
+
     task_types: List[TaskType]
     primary_config: ModelConfig
     fallback_config: Optional[ModelConfig] = None
-    
+
     def matches_task(self, task_type: TaskType) -> bool:
         """Check if this rule applies to the given task type."""
         return task_type in self.task_types

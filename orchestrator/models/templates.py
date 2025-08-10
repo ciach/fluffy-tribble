@@ -13,6 +13,7 @@ from .types import TaskType
 
 class PromptRole(Enum):
     """Roles for prompt messages."""
+
     SYSTEM = "system"
     USER = "user"
     ASSISTANT = "assistant"
@@ -21,23 +22,23 @@ class PromptRole(Enum):
 @dataclass
 class PromptTemplate:
     """Template for generating prompts for specific task types."""
-    
+
     task_type: TaskType
     system_prompt: str
     user_template: str
     context_keys: List[str]
     max_context_length: int = 8000
-    
+
     def format(self, context: Dict[str, Any]) -> List[Dict[str, str]]:
         """
         Format the template with provided context.
-        
+
         Args:
             context: Dictionary containing values for template variables
-            
+
         Returns:
             List of messages in OpenAI format
-            
+
         Raises:
             KeyError: If required context keys are missing
         """
@@ -45,27 +46,27 @@ class PromptTemplate:
         missing_keys = [key for key in self.context_keys if key not in context]
         if missing_keys:
             raise KeyError(f"Missing required context keys: {missing_keys}")
-        
+
         # Format user message with context
         user_message = self.user_template.format(**context)
-        
+
         return [
             {"role": PromptRole.SYSTEM.value, "content": self.system_prompt},
-            {"role": PromptRole.USER.value, "content": user_message}
+            {"role": PromptRole.USER.value, "content": user_message},
         ]
 
 
 class PromptTemplateManager:
     """Manages prompt templates for different task types."""
-    
+
     def __init__(self):
         """Initialize with default templates."""
         self.templates: Dict[TaskType, PromptTemplate] = {}
         self._setup_default_templates()
-    
+
     def _setup_default_templates(self) -> None:
         """Set up default prompt templates for all task types."""
-        
+
         # Planning template
         self.templates[TaskType.PLANNING] = PromptTemplate(
             task_type=TaskType.PLANNING,
@@ -102,9 +103,9 @@ Please format your response as a structured test plan with sections for:
 4. Coverage Analysis
 5. Risk Assessment""",
             context_keys=["specification", "existing_tests"],
-            max_context_length=6000
+            max_context_length=6000,
         )
-        
+
         # Debugging template
         self.templates[TaskType.DEBUGGING] = PromptTemplate(
             task_type=TaskType.DEBUGGING,
@@ -147,12 +148,20 @@ Please provide:
 3. Explanation of why the failure occurred
 4. Suggestions to prevent similar failures
 5. Confidence level in the proposed solution (1-10)""",
-            context_keys=["test_name", "error_message", "stack_trace", "test_code", 
-                         "has_screenshots", "has_trace", "has_console_logs", 
-                         "has_network_logs", "additional_context"],
-            max_context_length=8000
+            context_keys=[
+                "test_name",
+                "error_message",
+                "stack_trace",
+                "test_code",
+                "has_screenshots",
+                "has_trace",
+                "has_console_logs",
+                "has_network_logs",
+                "additional_context",
+            ],
+            max_context_length=8000,
         )
-        
+
         # Drafting template
         self.templates[TaskType.DRAFTING] = PromptTemplate(
             task_type=TaskType.DRAFTING,
@@ -197,11 +206,17 @@ Follow these selector preferences:
 2. getByLabel() for form fields
 3. getByTestId() for elements with test IDs
 4. CSS selectors only when necessary (with justifying comments)""",
-            context_keys=["test_case_name", "test_steps", "expected_results", 
-                         "page_url", "selectors", "requirements"],
-            max_context_length=5000
+            context_keys=[
+                "test_case_name",
+                "test_steps",
+                "expected_results",
+                "page_url",
+                "selectors",
+                "requirements",
+            ],
+            max_context_length=5000,
         )
-        
+
         # Analysis template
         self.templates[TaskType.ANALYSIS] = PromptTemplate(
             task_type=TaskType.ANALYSIS,
@@ -240,11 +255,16 @@ Please provide:
 5. Estimated impact of each recommendation
 
 Focus on practical improvements that can be implemented incrementally.""",
-            context_keys=["analysis_type", "test_files", "test_results", 
-                         "focus_areas", "current_issues"],
-            max_context_length=7000
+            context_keys=[
+                "analysis_type",
+                "test_files",
+                "test_results",
+                "focus_areas",
+                "current_issues",
+            ],
+            max_context_length=7000,
         )
-        
+
         # Generation template (for general code generation)
         self.templates[TaskType.GENERATION] = PromptTemplate(
             task_type=TaskType.GENERATION,
@@ -283,54 +303,57 @@ Please provide:
 5. Unit tests if applicable
 
 Ensure the code follows best practices and is ready for production use.""",
-            context_keys=["component_type", "requirements", "specifications", 
-                         "integration_context", "constraints"],
-            max_context_length=6000
+            context_keys=[
+                "component_type",
+                "requirements",
+                "specifications",
+                "integration_context",
+                "constraints",
+            ],
+            max_context_length=6000,
         )
-    
+
     def get_template(self, task_type: TaskType) -> PromptTemplate:
         """
         Get the template for a specific task type.
-        
+
         Args:
             task_type: The type of task
-            
+
         Returns:
             PromptTemplate for the task type
-            
+
         Raises:
             KeyError: If no template exists for the task type
         """
         if task_type not in self.templates:
             raise KeyError(f"No template found for task type: {task_type}")
-        
+
         return self.templates[task_type]
-    
+
     def register_template(self, template: PromptTemplate) -> None:
         """
         Register a custom template for a task type.
-        
+
         Args:
             template: The template to register
         """
         self.templates[template.task_type] = template
-    
+
     def list_available_templates(self) -> List[TaskType]:
         """Get list of available template task types."""
         return list(self.templates.keys())
-    
+
     def format_prompt(
-        self, 
-        task_type: TaskType, 
-        context: Dict[str, Any]
+        self, task_type: TaskType, context: Dict[str, Any]
     ) -> List[Dict[str, str]]:
         """
         Format a prompt for the given task type and context.
-        
+
         Args:
             task_type: The type of task
             context: Context variables for the template
-            
+
         Returns:
             Formatted messages in OpenAI format
         """
