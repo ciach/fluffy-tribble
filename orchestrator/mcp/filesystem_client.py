@@ -651,18 +651,21 @@ class FilesystemMCPClient:
             self.logger.info(f"Cleaned up {deleted_count} old backup files")
 
         return deleted_count
-    async def execute_operation(self, request: FileOperationRequest) -> FileOperationResult:
+
+    async def execute_operation(
+        self, request: FileOperationRequest
+    ) -> FileOperationResult:
         """
         Execute a file operation using a Pydantic request model.
-        
+
         Args:
             request: File operation request
-            
+
         Returns:
             File operation result
         """
         start_time = time.time()
-        
+
         try:
             if request.operation == "read":
                 content = await self.read_file(request.path)
@@ -670,55 +673,59 @@ class FilesystemMCPClient:
                     success=True,
                     path=request.path,
                     operation=request.operation,
-                    bytes_affected=len(content.encode('utf-8')),
-                    duration=time.time() - start_time
+                    bytes_affected=len(content.encode("utf-8")),
+                    duration=time.time() - start_time,
                 )
-            
+
             elif request.operation == "write":
                 if request.content is None:
                     raise ValueError("Content is required for write operation")
-                bytes_written = await self.write_file(request.path, request.content, request.create_backup)
+                bytes_written = await self.write_file(
+                    request.path, request.content, request.create_backup
+                )
                 return FileOperationResult(
                     success=True,
                     path=request.path,
                     operation=request.operation,
                     bytes_affected=bytes_written,
-                    duration=time.time() - start_time
+                    duration=time.time() - start_time,
                 )
-            
+
             elif request.operation == "delete":
                 await self.delete_file(request.path, request.create_backup)
                 return FileOperationResult(
                     success=True,
                     path=request.path,
                     operation=request.operation,
-                    duration=time.time() - start_time
+                    duration=time.time() - start_time,
                 )
-            
+
             else:
                 raise ValueError(f"Unsupported operation: {request.operation}")
-                
+
         except Exception as e:
             return FileOperationResult(
                 success=False,
                 path=request.path,
                 operation=request.operation,
                 error=str(e),
-                duration=time.time() - start_time
+                duration=time.time() - start_time,
             )
 
-    def validate_sandbox_access(self, paths: List[Union[str, Path]]) -> ValidationResult:
+    def validate_sandbox_access(
+        self, paths: List[Union[str, Path]]
+    ) -> ValidationResult:
         """
         Validate that multiple paths are within the sandbox.
-        
+
         Args:
             paths: List of paths to validate
-            
+
         Returns:
             Validation result with any errors or warnings
         """
         result = ValidationResult(valid=True)
-        
+
         for path in paths:
             try:
                 self._validate_path(path)
@@ -726,12 +733,12 @@ class FilesystemMCPClient:
                 result.add_error(f"Path validation failed for '{path}': {e.message}")
             except Exception as e:
                 result.add_error(f"Unexpected error validating '{path}': {str(e)}")
-        
+
         # Add context information
         result.context = {
             "sandbox_root": str(self.e2e_dir),
             "paths_checked": len(paths),
-            "valid_paths": len(paths) - len(result.errors)
+            "valid_paths": len(paths) - len(result.errors),
         }
-        
+
         return result

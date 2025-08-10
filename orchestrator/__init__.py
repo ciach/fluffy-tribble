@@ -15,7 +15,7 @@ from .core.workflow import WorkflowManager
 
 __all__ = [
     "Config",
-    "QAOperatorError", 
+    "QAOperatorError",
     "setup_logging",
     "WorkflowManager",
 ]

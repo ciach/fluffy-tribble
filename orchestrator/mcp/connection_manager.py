@@ -31,24 +31,29 @@ class ConnectionStatus(Enum):
 
 class MCPServerConfig(BaseModel):
     """Configuration for an MCP server."""
-    model_config = ConfigDict(extra='forbid')
-    
+
+    model_config = ConfigDict(extra="forbid")
+
     name: str = Field(..., description="Server name identifier")
     command: str = Field(..., description="Command to execute the server")
     args: List[str] = Field(default_factory=list, description="Command arguments")
     env: Optional[Dict[str, str]] = Field(None, description="Environment variables")
     timeout: int = Field(30, ge=1, le=300, description="Connection timeout in seconds")
     max_retries: int = Field(3, ge=0, le=10, description="Maximum retry attempts")
-    retry_delay: float = Field(1.0, ge=0.1, le=60.0, description="Initial retry delay in seconds")
-    retry_backoff: float = Field(2.0, ge=1.0, le=10.0, description="Retry backoff multiplier")
+    retry_delay: float = Field(
+        1.0, ge=0.1, le=60.0, description="Initial retry delay in seconds"
+    )
+    retry_backoff: float = Field(
+        2.0, ge=1.0, le=10.0, description="Retry backoff multiplier"
+    )
 
-    @validator('name')
+    @validator("name")
     def validate_name(cls, v):
         if not v or not v.strip():
             raise ValueError("Server name cannot be empty")
         return v.strip()
 
-    @validator('command')
+    @validator("command")
     def validate_command(cls, v):
         if not v or not v.strip():
             raise ValueError("Command cannot be empty")
@@ -57,16 +62,21 @@ class MCPServerConfig(BaseModel):
 
 class ConnectionHealth(BaseModel):
     """Health status of an MCP connection."""
-    model_config = ConfigDict(extra='forbid')
-    
+
+    model_config = ConfigDict(extra="forbid")
+
     server_name: str = Field(..., description="Server name")
     status: ConnectionStatus = Field(..., description="Current connection status")
-    last_connected: Optional[float] = Field(None, description="Timestamp of last successful connection")
+    last_connected: Optional[float] = Field(
+        None, description="Timestamp of last successful connection"
+    )
     last_error: Optional[str] = Field(None, description="Last error message")
     retry_count: int = Field(0, ge=0, description="Current retry attempt count")
-    next_retry: Optional[float] = Field(None, description="Timestamp for next retry attempt")
+    next_retry: Optional[float] = Field(
+        None, description="Timestamp for next retry attempt"
+    )
 
-    @validator('server_name')
+    @validator("server_name")
     def validate_server_name(cls, v):
         if not v or not v.strip():
             raise ValueError("Server name cannot be empty")

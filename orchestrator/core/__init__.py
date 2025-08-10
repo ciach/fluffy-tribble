@@ -15,7 +15,7 @@ from .workflow import WorkflowManager
 __all__ = [
     "Config",
     "QAOperatorError",
-    "MCPConnectionError", 
+    "MCPConnectionError",
     "ModelError",
     "TestExecutionError",
     "FileOperationError",

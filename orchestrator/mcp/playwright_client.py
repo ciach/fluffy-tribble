@@ -16,7 +16,13 @@ from enum import Enum
 from pydantic import BaseModel, Field, validator, ConfigDict
 
 from ..core.exceptions import TestExecutionError, MCPConnectionError
-from .models import MCPToolCall, MCPToolResponse, BrowserAction, BrowserActionResult, TestConfiguration
+from .models import (
+    MCPToolCall,
+    MCPToolResponse,
+    BrowserAction,
+    BrowserActionResult,
+    TestConfiguration,
+)
 
 
 class BrowserMode(Enum):
@@ -28,34 +34,44 @@ class BrowserMode(Enum):
 
 class TestArtifacts(BaseModel):
     """Container for test execution artifacts."""
-    model_config = ConfigDict(extra='forbid')
-    
+
+    model_config = ConfigDict(extra="forbid")
+
     trace_file: Optional[str] = Field(None, description="Path to trace file")
-    screenshots: List[str] = Field(default_factory=list, description="List of screenshot paths")
-    console_logs: List[Dict[str, Any]] = Field(default_factory=list, description="Console log entries")
-    network_logs: List[Dict[str, Any]] = Field(default_factory=list, description="Network log entries")
+    screenshots: List[str] = Field(
+        default_factory=list, description="List of screenshot paths"
+    )
+    console_logs: List[Dict[str, Any]] = Field(
+        default_factory=list, description="Console log entries"
+    )
+    network_logs: List[Dict[str, Any]] = Field(
+        default_factory=list, description="Network log entries"
+    )
     video_file: Optional[str] = Field(None, description="Path to video file")
 
 
 class TestResult(BaseModel):
     """Container for test execution results."""
-    model_config = ConfigDict(extra='forbid')
-    
+
+    model_config = ConfigDict(extra="forbid")
+
     test_name: str = Field(..., description="Name of the test")
     status: str = Field(..., description="Test status: passed, failed, or skipped")
     duration: float = Field(..., ge=0, description="Test duration in seconds")
     artifacts: TestArtifacts = Field(..., description="Test artifacts")
-    error_info: Optional[Dict[str, Any]] = Field(None, description="Error information if test failed")
+    error_info: Optional[Dict[str, Any]] = Field(
+        None, description="Error information if test failed"
+    )
     exit_code: Optional[int] = Field(None, description="Process exit code")
 
-    @validator('status')
+    @validator("status")
     def validate_status(cls, v):
-        valid_statuses = ['passed', 'failed', 'skipped']
+        valid_statuses = ["passed", "failed", "skipped"]
         if v not in valid_statuses:
             raise ValueError(f"Status must be one of: {valid_statuses}")
         return v
 
-    @validator('test_name')
+    @validator("test_name")
     def validate_test_name(cls, v):
         if not v or not v.strip():
             raise ValueError("Test name cannot be empty")
@@ -556,46 +572,53 @@ class PlaywrightMCPClient:
             True if server is connected and available
         """
         return self.connection_manager.is_connected(self.server_name)
-    async def execute_browser_action(self, action: BrowserAction) -> BrowserActionResult:
+
+    async def execute_browser_action(
+        self, action: BrowserAction
+    ) -> BrowserActionResult:
         """
         Execute a browser action using a Pydantic action model.
-        
+
         Args:
             action: Browser action to execute
-            
+
         Returns:
             Browser action result
         """
         start_time = time.time()
-        
+
         try:
             if not self._current_page:
                 raise TestExecutionError("No active page for browser action")
-            
+
             if action.action == "navigate":
                 if not action.url:
                     raise ValueError("URL is required for navigate action")
                 await self.navigate(self._current_page, action.url, **action.options)
-                
+
             elif action.action == "click":
                 if not action.selector:
                     raise ValueError("Selector is required for click action")
                 await self.click(self._current_page, action.selector, **action.options)
-                
+
             elif action.action == "fill":
                 if not action.selector or action.value is None:
                     raise ValueError("Selector and value are required for fill action")
-                await self.fill(self._current_page, action.selector, action.value, **action.options)
-                
+                await self.fill(
+                    self._current_page, action.selector, action.value, **action.options
+                )
+
             elif action.action == "screenshot":
-                screenshot_path = await self.screenshot(self._current_page, **action.options)
+                screenshot_path = await self.screenshot(
+                    self._current_page, **action.options
+                )
                 return BrowserActionResult(
                     success=True,
                     action=action.action,
                     screenshot_path=screenshot_path,
-                    duration=time.time() - start_time
+                    duration=time.time() - start_time,
                 )
-                
+
             elif action.action == "get_text":
                 if not action.selector:
                     raise ValueError("Selector is required for get_text action")
@@ -604,38 +627,36 @@ class PlaywrightMCPClient:
                     success=True,
                     action=action.action,
                     result_data={"text": text},
-                    duration=time.time() - start_time
+                    duration=time.time() - start_time,
                 )
-                
+
             else:
                 raise ValueError(f"Unsupported action: {action.action}")
-            
+
             return BrowserActionResult(
-                success=True,
-                action=action.action,
-                duration=time.time() - start_time
+                success=True, action=action.action, duration=time.time() - start_time
             )
-            
+
         except Exception as e:
             return BrowserActionResult(
                 success=False,
                 action=action.action,
                 error=str(e),
-                duration=time.time() - start_time
+                duration=time.time() - start_time,
             )
 
     async def execute_test_with_config(self, config: TestConfiguration) -> TestResult:
         """
         Execute a test using a Pydantic configuration model.
-        
+
         Args:
             config: Test configuration
-            
+
         Returns:
             Test execution result
         """
         mode = BrowserMode.HEADLESS if config.headless else BrowserMode.HEADED
-        
+
         # Convert TestConfiguration to execute_test parameters
         options = {
             "timeout": config.timeout,
@@ -644,10 +665,10 @@ class PlaywrightMCPClient:
             "video": config.video,
             "screenshot": config.screenshot_mode,
         }
-        
+
         return await self.execute_test(
             test_file=config.test_file,
             mode=mode,
             artifacts_dir=config.artifacts_dir,
-            **options
+            **options,
         )
