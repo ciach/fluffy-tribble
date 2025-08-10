@@ -1,0 +1,1 @@
+{\n  "mcpServers": {\n    "playwright": { "command": "npx", "args": ["@playwright/mcp@latest"] },\n    "filesystem": { "command": "node", "args": ["./servers/fs-mcp.js"] }\n  }\n}
