@@ -7,9 +7,9 @@ from .models import TestSpecification, TestPlan, TestCase, TestStep, Assertion
 
 __all__ = [
     "PlanningEngine",
-    "TestSpecification", 
+    "TestSpecification",
     "TestPlan",
     "TestCase",
     "TestStep",
-    "Assertion"
+    "Assertion",
 ]

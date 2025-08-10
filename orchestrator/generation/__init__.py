@@ -8,8 +8,8 @@ from .models import GeneratedTest, SelectorViolation, AuditResult
 
 __all__ = [
     "TestGenerator",
-    "SelectorAuditor", 
+    "SelectorAuditor",
     "GeneratedTest",
     "SelectorViolation",
-    "AuditResult"
+    "AuditResult",
 ]
