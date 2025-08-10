@@ -270,3 +270,60 @@ def log_model_call(
             }
         },
     )
+
+
+def log_performance(operation_name: str):
+    """
+    Decorator to log performance metrics for functions.
+    
+    Args:
+        operation_name: Name of the operation being measured
+    
+    Returns:
+        Decorator function
+    """
+    import time
+    import functools
+    
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            logger = get_logger(f"{func.__module__}.{func.__name__}")
+            start_time = time.time()
+            
+            try:
+                result = func(*args, **kwargs)
+                duration = time.time() - start_time
+                
+                logger.info(
+                    f"{operation_name} completed",
+                    extra={
+                        "metadata": {
+                            "operation": operation_name,
+                            "duration": duration,
+                            "success": True
+                        }
+                    }
+                )
+                
+                return result
+                
+            except Exception as e:
+                duration = time.time() - start_time
+                
+                logger.error(
+                    f"{operation_name} failed",
+                    extra={
+                        "metadata": {
+                            "operation": operation_name,
+                            "duration": duration,
+                            "success": False,
+                            "error": str(e)
+                        }
+                    }
+                )
+                
+                raise
+        
+        return wrapper
+    return decorator

@@ -139,11 +139,27 @@ class Config:
         """Create configuration from environment variables."""
         return cls()
 
+    def get_effective_headless_mode(self) -> bool:
+        """Get effective headless mode based on CI and override settings."""
+        if self.headless_mode is not None:
+            return self.headless_mode
+        return self.ci_mode
+
     def validate(self) -> None:
         """Validate configuration and raise ValidationError if invalid."""
         from .exceptions import ValidationError
 
         errors = []
+
+        # Validate log level
+        valid_log_levels = ["DEBUG", "INFO", "WARN", "ERROR"]
+        if self.log_level not in valid_log_levels:
+            errors.append(f"Invalid log level: {self.log_level}. Must be one of {valid_log_levels}")
+
+        # Validate model provider
+        valid_providers = ["openai", "ollama", "mixed"]
+        if self.model_provider not in valid_providers:
+            errors.append(f"Invalid model provider: {self.model_provider}. Must be one of {valid_providers}")
 
         # Check required directories exist and are accessible
         if not self.e2e_dir.exists():
@@ -155,7 +171,7 @@ class Config:
         # Check OpenAI API key if using OpenAI models
         if self.model_provider in ["openai", "mixed"] and not self.openai_api_key:
             errors.append(
-                "OPENAI_API_KEY environment variable is required for OpenAI model usage"
+                "OpenAI API key is required for OpenAI model usage"
             )
 
         # Check MCP config exists

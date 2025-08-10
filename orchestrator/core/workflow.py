@@ -50,6 +50,7 @@ class WorkflowManager:
         self.config = config or Config.from_env()
         self.logger = get_logger("qa_operator.workflow")
         self._current_workflow: Optional[WorkflowContext] = None
+        self.active_workflows: Dict[str, WorkflowContext] = {}
 
     def generate_workflow_id(self) -> str:
         """
