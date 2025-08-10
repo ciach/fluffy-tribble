@@ -39,24 +39,24 @@ class SelectorAuditor:
 
             # Start with default rules
             rules = self._get_default_policy()
-            
+
             # Parse markdown content for policy rules
-            lines = content.split('\n')
+            lines = content.split("\n")
             current_section = None
-            
+
             for line in lines:
                 line = line.strip()
                 if not line:
                     continue
-                    
+
                 # Check for section headers
-                if line.startswith('#'):
+                if line.startswith("#"):
                     current_section = line.lower()
                     continue
-                
+
                 # Parse policy statements
                 self._parse_policy_line(line, rules)
-            
+
             # Log loaded policy for debugging
             logger.debug(f"Loaded policy rules: {rules}")
             return rules
@@ -68,44 +68,48 @@ class SelectorAuditor:
     def _parse_policy_line(self, line: str, rules: Dict[str, Any]) -> None:
         """Parse a single policy line and update rules."""
         line_lower = line.lower()
-        
+
         # Parse preferred selectors
-        if any(keyword in line_lower for keyword in ['prefer', 'use', 'recommended']):
-            if 'getbyrole' in line_lower:
-                self._add_unique(rules['preferred_selectors'], 'getByRole')
-            if 'getbylabel' in line_lower:
-                self._add_unique(rules['preferred_selectors'], 'getByLabel')
-            if 'getbytestid' in line_lower:
-                self._add_unique(rules['preferred_selectors'], 'getByTestId')
-            if 'getbyplaceholder' in line_lower:
-                self._add_unique(rules['preferred_selectors'], 'getByPlaceholder')
-            if 'getbytext' in line_lower:
-                self._add_unique(rules['preferred_selectors'], 'getByText')
-        
+        if any(keyword in line_lower for keyword in ["prefer", "use", "recommended"]):
+            if "getbyrole" in line_lower:
+                self._add_unique(rules["preferred_selectors"], "getByRole")
+            if "getbylabel" in line_lower:
+                self._add_unique(rules["preferred_selectors"], "getByLabel")
+            if "getbytestid" in line_lower:
+                self._add_unique(rules["preferred_selectors"], "getByTestId")
+            if "getbyplaceholder" in line_lower:
+                self._add_unique(rules["preferred_selectors"], "getByPlaceholder")
+            if "getbytext" in line_lower:
+                self._add_unique(rules["preferred_selectors"], "getByText")
+
         # Parse discouraged selectors
-        if any(keyword in line_lower for keyword in ['avoid', 'discourage', 'don\'t use']):
-            if 'css' in line_lower:
-                self._add_unique(rules['discouraged_selectors'], 'css')
-                self._add_unique(rules['require_justification'], 'css')
-            if 'xpath' in line_lower:
-                self._add_unique(rules['discouraged_selectors'], 'xpath')
-                self._add_unique(rules['require_justification'], 'xpath')
-            if 'queryselector' in line_lower:
-                self._add_unique(rules['discouraged_selectors'], 'querySelector')
-                self._add_unique(rules['require_justification'], 'querySelector')
-        
+        if any(
+            keyword in line_lower for keyword in ["avoid", "discourage", "don't use"]
+        ):
+            if "css" in line_lower:
+                self._add_unique(rules["discouraged_selectors"], "css")
+                self._add_unique(rules["require_justification"], "css")
+            if "xpath" in line_lower:
+                self._add_unique(rules["discouraged_selectors"], "xpath")
+                self._add_unique(rules["require_justification"], "xpath")
+            if "queryselector" in line_lower:
+                self._add_unique(rules["discouraged_selectors"], "querySelector")
+                self._add_unique(rules["require_justification"], "querySelector")
+
         # Parse justification requirements
-        if any(keyword in line_lower for keyword in ['justify', 'justified', 'unless']):
-            rules['allow_with_justification'] = True
-            if 'css' in line_lower:
-                self._add_unique(rules['require_justification'], 'css')
-            if 'xpath' in line_lower:
-                self._add_unique(rules['require_justification'], 'xpath')
-        
+        if any(keyword in line_lower for keyword in ["justify", "justified", "unless"]):
+            rules["allow_with_justification"] = True
+            if "css" in line_lower:
+                self._add_unique(rules["require_justification"], "css")
+            if "xpath" in line_lower:
+                self._add_unique(rules["require_justification"], "xpath")
+
         # Parse strict enforcement
-        if any(keyword in line_lower for keyword in ['never', 'forbidden', 'prohibited']):
-            rules['allow_with_justification'] = False
-    
+        if any(
+            keyword in line_lower for keyword in ["never", "forbidden", "prohibited"]
+        ):
+            rules["allow_with_justification"] = False
+
     def _add_unique(self, list_obj: List[str], item: str) -> None:
         """Add item to list if not already present."""
         if item not in list_obj:
@@ -165,12 +169,11 @@ class SelectorAuditor:
             has_justification = self._has_justification_comment(
                 line
             ) or self._has_justification_comment(prev_line)
-            
+
             # Extract justification text from either line
-            justification_text = (
-                self._extract_justification_text(line) or 
-                self._extract_justification_text(prev_line)
-            )
+            justification_text = self._extract_justification_text(
+                line
+            ) or self._extract_justification_text(prev_line)
 
             line_violations, line_selectors, line_compliant, line_justified = (
                 self._audit_line(line, line_num, has_justification, justification_text)
@@ -202,7 +205,11 @@ class SelectorAuditor:
         return result
 
     def _audit_line(
-        self, line: str, line_num: int, has_justification: bool = False, justification_text: Optional[str] = None
+        self,
+        line: str,
+        line_num: int,
+        has_justification: bool = False,
+        justification_text: Optional[str] = None,
     ) -> tuple[List[SelectorViolation], int, int, int]:
         """Audit a single line of code.
 
@@ -229,7 +236,12 @@ class SelectorAuditor:
                 selector_type = self._get_selector_type(selector_name)
 
                 violation = self._check_selector_compliance(
-                    selector_name, match, selector_type, line_num, has_justification, justification_text
+                    selector_name,
+                    match,
+                    selector_type,
+                    line_num,
+                    has_justification,
+                    justification_text,
                 )
 
                 if violation:
@@ -259,7 +271,7 @@ class SelectorAuditor:
                 return True
 
         return False
-    
+
     def _extract_justification_text(self, line: str) -> Optional[str]:
         """Extract the justification text from a comment."""
         # Extract comment content
@@ -267,7 +279,7 @@ class SelectorAuditor:
             r"//\s*(.+)",  # Single line comment
             r"/\*\s*(.+?)\s*\*/",  # Multi-line comment
         ]
-        
+
         for pattern in comment_patterns:
             match = re.search(pattern, line, re.IGNORECASE)
             if match:
@@ -275,7 +287,7 @@ class SelectorAuditor:
                 # Check if it contains justification keywords
                 if self._has_justification_comment(line):
                     return comment_text
-        
+
         return None
 
     def _get_selector_type(self, selector_name: str) -> SelectorType:
@@ -341,11 +353,11 @@ class SelectorAuditor:
         ):
             severity = ViolationSeverity.WARNING
             message = "Potentially brittle CSS selector"
-            
+
             # If justified, keep as warning but note justification
             if has_justification:
                 message += " (justified)"
-            
+
             return SelectorViolation(
                 line_number=line_num,
                 selector=selector_value,
@@ -413,7 +425,9 @@ class SelectorAuditor:
 
         return audit_result.is_compliant
 
-    def generate_violation_report(self, audit_result: AuditResult, file_path: str = "") -> str:
+    def generate_violation_report(
+        self, audit_result: AuditResult, file_path: str = ""
+    ) -> str:
         """Generate a comprehensive violation report.
 
         Args:
@@ -424,13 +438,15 @@ class SelectorAuditor:
             Formatted violation report
         """
         if audit_result.is_compliant and not audit_result.violations:
-            return f"✅ Selector audit passed for {file_path}\n" \
-                   f"   {audit_result.total_selectors} selectors, {audit_result.compliance_rate:.1f}% compliant"
+            return (
+                f"✅ Selector audit passed for {file_path}\n"
+                f"   {audit_result.total_selectors} selectors, {audit_result.compliance_rate:.1f}% compliant"
+            )
 
         report_lines = []
         report_lines.append(f"🔍 Selector Audit Report for {file_path}")
         report_lines.append("=" * 60)
-        
+
         # Summary
         report_lines.append(f"Total Selectors: {audit_result.total_selectors}")
         report_lines.append(f"Compliant: {audit_result.compliant_selectors}")
@@ -440,38 +456,56 @@ class SelectorAuditor:
         report_lines.append("")
 
         # Group violations by severity
-        errors = [v for v in audit_result.violations if v.severity == ViolationSeverity.ERROR]
-        warnings = [v for v in audit_result.violations if v.severity == ViolationSeverity.WARNING]
-        
+        errors = [
+            v for v in audit_result.violations if v.severity == ViolationSeverity.ERROR
+        ]
+        warnings = [
+            v
+            for v in audit_result.violations
+            if v.severity == ViolationSeverity.WARNING
+        ]
+
         if errors:
             report_lines.append("❌ ERRORS (Must be fixed):")
             for violation in errors:
-                report_lines.append(f"   Line {violation.line_number}: {violation.message}")
+                report_lines.append(
+                    f"   Line {violation.line_number}: {violation.message}"
+                )
                 report_lines.append(f"      Selector: '{violation.selector}'")
                 if violation.suggested_fix:
                     report_lines.append(f"      Suggestion: {violation.suggested_fix}")
                 if violation.justification:
-                    report_lines.append(f"      Justification: {violation.justification}")
+                    report_lines.append(
+                        f"      Justification: {violation.justification}"
+                    )
                 report_lines.append("")
 
         if warnings:
             report_lines.append("⚠️  WARNINGS:")
             for violation in warnings:
-                report_lines.append(f"   Line {violation.line_number}: {violation.message}")
+                report_lines.append(
+                    f"   Line {violation.line_number}: {violation.message}"
+                )
                 report_lines.append(f"      Selector: '{violation.selector}'")
                 if violation.suggested_fix:
                     report_lines.append(f"      Suggestion: {violation.suggested_fix}")
                 if violation.justification:
-                    report_lines.append(f"      Justification: {violation.justification}")
+                    report_lines.append(
+                        f"      Justification: {violation.justification}"
+                    )
                 report_lines.append("")
 
         # Policy recommendations
         if errors or warnings:
             report_lines.append("📋 Policy Recommendations:")
             report_lines.append("   • Prefer getByRole(), getByLabel(), getByTestId()")
-            report_lines.append("   • Avoid CSS selectors unless justified with comments")
+            report_lines.append(
+                "   • Avoid CSS selectors unless justified with comments"
+            )
             report_lines.append("   • Use semantic selectors for better test stability")
-            report_lines.append("   • Add justification comments for necessary brittle selectors")
+            report_lines.append(
+                "   • Add justification comments for necessary brittle selectors"
+            )
 
         return "\n".join(report_lines)
 
@@ -484,18 +518,22 @@ class SelectorAuditor:
         summary_lines = []
         summary_lines.append("📋 Current Selector Policy:")
         summary_lines.append("=" * 40)
-        
+
         summary_lines.append("✅ Preferred Selectors:")
         for selector in self.policy_rules["preferred_selectors"]:
             summary_lines.append(f"   • {selector}()")
-        
+
         summary_lines.append("\n❌ Discouraged Selectors:")
         for selector in self.policy_rules["discouraged_selectors"]:
             summary_lines.append(f"   • {selector}")
-        
+
         if self.policy_rules.get("allow_with_justification", False):
             summary_lines.append("\n💬 Justification Policy:")
-            summary_lines.append("   • Discouraged selectors allowed with justification comments")
-            summary_lines.append("   • Use comments containing: justified, necessary, required, etc.")
-        
+            summary_lines.append(
+                "   • Discouraged selectors allowed with justification comments"
+            )
+            summary_lines.append(
+                "   • Use comments containing: justified, necessary, required, etc."
+            )
+
         return "\n".join(summary_lines)

@@ -120,7 +120,10 @@ test('login test', async ({ page }) => {
         )  # Justified violations don't block compliance
         assert len(result.violations) == 1
         assert result.violations[0].severity == ViolationSeverity.WARNING
-        assert result.violations[0].justification == "Legacy selector - justified for compatibility"
+        assert (
+            result.violations[0].justification
+            == "Legacy selector - justified for compatibility"
+        )
         assert result.justified_violations == 1
 
     def test_audit_brittle_css_selectors(self, auditor):
@@ -162,12 +165,8 @@ test('brittle selectors', async ({ page }) => {
         assert auditor._has_justification_comment(
             "await page.locator('.btn'); // Required by design"
         )
-        assert auditor._has_justification_comment(
-            "// Third-party library requirement"
-        )
-        assert auditor._has_justification_comment(
-            "// No alternative available"
-        )
+        assert auditor._has_justification_comment("// Third-party library requirement")
+        assert auditor._has_justification_comment("// No alternative available")
         assert auditor._has_justification_comment(
             "/* Temporary workaround for API limitation */"
         )
@@ -309,14 +308,11 @@ test('brittle selectors', async ({ page }) => {
     def test_generate_violation_report_compliant(self, auditor):
         """Test violation report generation for compliant code."""
         audit_result = AuditResult(
-            is_compliant=True, 
-            violations=[], 
-            total_selectors=5, 
-            compliant_selectors=5
+            is_compliant=True, violations=[], total_selectors=5, compliant_selectors=5
         )
 
         report = auditor.generate_violation_report(audit_result, "test.spec.ts")
-        
+
         assert "✅ Selector audit passed" in report
         assert "100.0% compliant" in report
         assert "5 selectors" in report
@@ -330,7 +326,7 @@ test('brittle selectors', async ({ page }) => {
             violation_type="discouraged_selector",
             message="Discouraged selector type 'css' used",
             severity=ViolationSeverity.ERROR,
-            suggested_fix="Use getByRole() instead"
+            suggested_fix="Use getByRole() instead",
         )
 
         warning_violation = SelectorViolation(
@@ -340,7 +336,7 @@ test('brittle selectors', async ({ page }) => {
             violation_type="discouraged_selector",
             message="Discouraged selector type 'css' used (justified)",
             severity=ViolationSeverity.WARNING,
-            justification="Legacy compatibility required"
+            justification="Legacy compatibility required",
         )
 
         audit_result = AuditResult(
@@ -348,11 +344,11 @@ test('brittle selectors', async ({ page }) => {
             violations=[error_violation, warning_violation],
             total_selectors=3,
             compliant_selectors=1,
-            justified_violations=1
+            justified_violations=1,
         )
 
         report = auditor.generate_violation_report(audit_result, "test.spec.ts")
-        
+
         assert "🔍 Selector Audit Report" in report
         assert "❌ ERRORS" in report
         assert "⚠️  WARNINGS" in report
@@ -365,7 +361,7 @@ test('brittle selectors', async ({ page }) => {
     def test_get_policy_summary(self, auditor):
         """Test policy summary generation."""
         summary = auditor.get_policy_summary()
-        
+
         assert "📋 Current Selector Policy" in summary
         assert "✅ Preferred Selectors" in summary
         assert "❌ Discouraged Selectors" in summary
@@ -392,11 +388,11 @@ Discourage querySelector methods.
 CSS selectors are allowed when justified with comments.
 XPath selectors require justification for third-party compatibility.
 """
-        
+
         with patch("pathlib.Path.exists", return_value=True):
             with patch("builtins.open", mock_open(read_data=enhanced_policy)):
                 auditor = SelectorAuditor()
-                
+
                 assert "getByRole" in auditor.policy_rules["preferred_selectors"]
                 assert "getByPlaceholder" in auditor.policy_rules["preferred_selectors"]
                 assert "css" in auditor.policy_rules["discouraged_selectors"]
