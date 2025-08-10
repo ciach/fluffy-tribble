@@ -16,7 +16,7 @@ from .models import (
 
 __all__ = [
     "TestExecutor",
-    "ArtifactManager", 
+    "ArtifactManager",
     "ExecutionConfig",
     "ExecutionResult",
     "TestExecutionError",
