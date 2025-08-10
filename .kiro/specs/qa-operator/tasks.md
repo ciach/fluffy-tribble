@@ -124,8 +124,8 @@
     - Add manual approval workflow for Git operations
     - _Requirements: 7.3, 7.4_
 
-- [ ] 9. Implement testing best practices enforcement
-  - [ ] 9.1 Create selector policy enforcement system
+- [-] 9. Implement testing best practices enforcement
+  - [x] 9.1 Create selector policy enforcement system
     - Load and parse policies/selector.md for validation rules
     - Implement comprehensive selector auditing logic
     - Run selector audit automatically after generation and fail workflow if violations are unapproved
@@ -134,7 +134,7 @@
     - Write unit tests for policy enforcement
     - _Requirements: 6.1, 6.3, 6.6_
 
-  - [ ] 9.2 Add test suite health monitoring
+  - [-] 9.2 Add test suite health monitoring
     - Implement duplicate helper detection and suggestions
     - Create unstable selector identification and replacement
     - Add deterministic data seeding recommendations

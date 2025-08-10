@@ -150,13 +150,23 @@ Respond with the complete updated test file content:
             )
             generated_test.audit_result = audit_result
 
-            # Validate compliance (this will raise ValidationError if non-compliant)
-            self.selector_auditor.validate_compliance(audit_result)
-
-            logger.info(
-                f"Test generation completed: {file_name} "
-                f"({audit_result.compliance_rate:.1f}% compliant)"
+            # Generate comprehensive violation report
+            violation_report = self.selector_auditor.generate_violation_report(
+                audit_result, file_path
             )
+            logger.info(f"Selector audit report:\n{violation_report}")
+
+            # Validate compliance (this will raise ValidationError if non-compliant)
+            try:
+                self.selector_auditor.validate_compliance(audit_result)
+                logger.info(
+                    f"Test generation completed: {file_name} "
+                    f"({audit_result.compliance_rate:.1f}% compliant)"
+                )
+            except ValidationError as e:
+                logger.error(f"Selector policy violations prevent test generation: {e}")
+                logger.error(f"Violation details:\n{violation_report}")
+                raise
 
             return generated_test
 
@@ -211,10 +221,21 @@ Respond with the complete updated test file content:
             )
             updated_test.audit_result = audit_result
 
-            # Validate compliance
-            self.selector_auditor.validate_compliance(audit_result)
+            # Generate comprehensive violation report
+            violation_report = self.selector_auditor.generate_violation_report(
+                audit_result, file_path
+            )
+            logger.info(f"Selector audit report:\n{violation_report}")
 
-            logger.info(f"Test update completed: {file_path}")
+            # Validate compliance
+            try:
+                self.selector_auditor.validate_compliance(audit_result)
+                logger.info(f"Test update completed: {file_path}")
+            except ValidationError as e:
+                logger.error(f"Selector policy violations prevent test update: {e}")
+                logger.error(f"Violation details:\n{violation_report}")
+                raise
+
             return updated_test
 
         except ValidationError:
