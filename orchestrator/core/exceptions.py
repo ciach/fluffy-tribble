@@ -130,3 +130,23 @@ class ValidationError(QAOperatorError):
                 "violations": violations,
             }
         )
+
+
+class PlanningError(QAOperatorError):
+    """Raised when test planning operations fail."""
+
+    def __init__(
+        self,
+        message: str,
+        specification_id: Optional[str] = None,
+        planning_stage: Optional[str] = None,
+    ):
+        super().__init__(message, "PLANNING_FAILED")
+        self.specification_id = specification_id
+        self.planning_stage = planning_stage
+        self.context.update(
+            {
+                "specification_id": specification_id,
+                "planning_stage": planning_stage,
+            }
+        )

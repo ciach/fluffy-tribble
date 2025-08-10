@@ -44,15 +44,15 @@
     - Implement rate limiting and retry logic
     - _Requirements: 5.1, 5.2_
 
-- [ ] 4. Build test planning and generation components
-  - [ ] 4.1 Implement planning engine
+- [x] 4. Build test planning and generation components
+  - [x] 4.1 Implement planning engine
     - Create test specification parser and analyzer
     - Implement test plan generation using OpenAI model
     - Add test gap analysis functionality
     - Write unit tests for planning logic
     - _Requirements: 1.1, 1.4_
 
-  - [ ] 4.2 Create test generator with selector auditing
+  - [x] 4.2 Create test generator with selector auditing
     - Implement Playwright TypeScript test code generation
     - Create selector policy enforcement from policies/selector.md
     - Add post-generation selector audit with rejection logic
