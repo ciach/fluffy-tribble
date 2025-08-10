@@ -293,7 +293,9 @@ class TestGitMCPClient:
         with patch.object(git_client, "_call_git_tool") as mock_call:
             mock_call.return_value = {"success": True}
 
-            await git_client.create_pull_request(pr_info, include_workflow_context=False)
+            await git_client.create_pull_request(
+                pr_info, include_workflow_context=False
+            )
 
             call_args = mock_call.call_args[0][1]
             assert call_args["description"] == pr_info.description
@@ -482,7 +484,9 @@ class TestGitMCPClient:
             result = await git_client.validate_repository()
 
             assert result.valid is True
-            assert any("Git MCP server not available" in warning for warning in result.warnings)
+            assert any(
+                "Git MCP server not available" in warning for warning in result.warnings
+            )
 
     @pytest.mark.asyncio
     async def test_fallback_git_operation(self, git_client):
@@ -498,7 +502,9 @@ class TestGitMCPClient:
     @pytest.mark.asyncio
     async def test_call_git_tool_with_mcp_failure_and_fallback(self, git_client):
         """Test Git tool call with MCP failure and successful fallback."""
-        with patch.object(git_client, "_ensure_connection") as mock_ensure, patch.object(
+        with patch.object(
+            git_client, "_ensure_connection"
+        ) as mock_ensure, patch.object(
             git_client, "_fallback_git_operation"
         ) as mock_fallback:
             mock_ensure.side_effect = Exception("MCP connection failed")
@@ -512,7 +518,9 @@ class TestGitMCPClient:
     @pytest.mark.asyncio
     async def test_call_git_tool_with_both_failures(self, git_client):
         """Test Git tool call when both MCP and fallback fail."""
-        with patch.object(git_client, "_ensure_connection") as mock_ensure, patch.object(
+        with patch.object(
+            git_client, "_ensure_connection"
+        ) as mock_ensure, patch.object(
             git_client, "_fallback_git_operation"
         ) as mock_fallback:
             mock_ensure.side_effect = Exception("MCP connection failed")

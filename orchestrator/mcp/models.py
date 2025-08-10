@@ -264,8 +264,17 @@ class GitOperationRequest(BaseModel):
     @validator("operation")
     def validate_operation(cls, v):
         valid_ops = [
-            "status", "add", "commit", "push", "pull", "branch", 
-            "checkout", "merge", "diff", "log", "remote"
+            "status",
+            "add",
+            "commit",
+            "push",
+            "pull",
+            "branch",
+            "checkout",
+            "merge",
+            "diff",
+            "log",
+            "remote",
         ]
         if v not in valid_ops:
             raise ValueError(f"Operation must be one of: {valid_ops}")

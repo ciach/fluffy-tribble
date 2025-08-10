@@ -32,20 +32,20 @@ from .models import (
 class ReportGenerator:
     """
     Generates test reports in various formats with CI integration.
-    
+
     Supports JSON, HTML, Markdown, and JUnit XML formats with
     artifact attachment and Git correlation.
     """
-    
+
     def __init__(
         self,
         output_dir: Path,
         template_dir: Optional[Path] = None,
-        logger: Optional[logging.Logger] = None
+        logger: Optional[logging.Logger] = None,
     ):
         """
         Initialize the report generator.
-        
+
         Args:
             output_dir: Directory for generated reports
             template_dir: Directory containing report templates
@@ -54,20 +54,19 @@ class ReportGenerator:
         self.output_dir = Path(output_dir)
         self.template_dir = template_dir or (Path(__file__).parent / "templates")
         self.logger = logger or logging.getLogger(__name__)
-        
+
         # Ensure directories exist
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.template_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Initialize Jinja2 environment for templates
         self.jinja_env = Environment(
-            loader=FileSystemLoader(str(self.template_dir)),
-            autoescape=True
+            loader=FileSystemLoader(str(self.template_dir)), autoescape=True
         )
-        
+
         # CI environment detection
         self.ci_environment = self._detect_ci_environment()
-        
+
     def _detect_ci_environment(self) -> CIEnvironment:
         """Detect the current CI environment."""
         if os.getenv("GITHUB_ACTIONS"):
@@ -86,51 +85,57 @@ class ReportGenerator:
             return CIEnvironment.UNKNOWN
         else:
             return CIEnvironment.LOCAL
-    
+
     def _collect_ci_info(self) -> Dict[str, Any]:
         """Collect CI environment information."""
         ci_info = {
             "environment": self.ci_environment.value,
             "detected_at": datetime.now().isoformat(),
         }
-        
+
         if self.ci_environment == CIEnvironment.GITHUB_ACTIONS:
-            ci_info.update({
-                "repository": os.getenv("GITHUB_REPOSITORY"),
-                "ref": os.getenv("GITHUB_REF"),
-                "sha": os.getenv("GITHUB_SHA"),
-                "run_id": os.getenv("GITHUB_RUN_ID"),
-                "run_number": os.getenv("GITHUB_RUN_NUMBER"),
-                "actor": os.getenv("GITHUB_ACTOR"),
-                "workflow": os.getenv("GITHUB_WORKFLOW"),
-            })
+            ci_info.update(
+                {
+                    "repository": os.getenv("GITHUB_REPOSITORY"),
+                    "ref": os.getenv("GITHUB_REF"),
+                    "sha": os.getenv("GITHUB_SHA"),
+                    "run_id": os.getenv("GITHUB_RUN_ID"),
+                    "run_number": os.getenv("GITHUB_RUN_NUMBER"),
+                    "actor": os.getenv("GITHUB_ACTOR"),
+                    "workflow": os.getenv("GITHUB_WORKFLOW"),
+                }
+            )
         elif self.ci_environment == CIEnvironment.GITLAB_CI:
-            ci_info.update({
-                "project_id": os.getenv("CI_PROJECT_ID"),
-                "project_name": os.getenv("CI_PROJECT_NAME"),
-                "commit_sha": os.getenv("CI_COMMIT_SHA"),
-                "commit_ref": os.getenv("CI_COMMIT_REF_NAME"),
-                "pipeline_id": os.getenv("CI_PIPELINE_ID"),
-                "job_id": os.getenv("CI_JOB_ID"),
-                "runner_description": os.getenv("CI_RUNNER_DESCRIPTION"),
-            })
+            ci_info.update(
+                {
+                    "project_id": os.getenv("CI_PROJECT_ID"),
+                    "project_name": os.getenv("CI_PROJECT_NAME"),
+                    "commit_sha": os.getenv("CI_COMMIT_SHA"),
+                    "commit_ref": os.getenv("CI_COMMIT_REF_NAME"),
+                    "pipeline_id": os.getenv("CI_PIPELINE_ID"),
+                    "job_id": os.getenv("CI_JOB_ID"),
+                    "runner_description": os.getenv("CI_RUNNER_DESCRIPTION"),
+                }
+            )
         elif self.ci_environment == CIEnvironment.JENKINS:
-            ci_info.update({
-                "build_number": os.getenv("BUILD_NUMBER"),
-                "build_id": os.getenv("BUILD_ID"),
-                "job_name": os.getenv("JOB_NAME"),
-                "build_url": os.getenv("BUILD_URL"),
-                "node_name": os.getenv("NODE_NAME"),
-                "workspace": os.getenv("WORKSPACE"),
-            })
-        
+            ci_info.update(
+                {
+                    "build_number": os.getenv("BUILD_NUMBER"),
+                    "build_id": os.getenv("BUILD_ID"),
+                    "job_name": os.getenv("JOB_NAME"),
+                    "build_url": os.getenv("BUILD_URL"),
+                    "node_name": os.getenv("NODE_NAME"),
+                    "workspace": os.getenv("WORKSPACE"),
+                }
+            )
+
         return ci_info
-    
+
     def _collect_git_info(self, git_client=None) -> Optional[Dict[str, Any]]:
         """Collect Git repository information."""
         if not git_client:
             return None
-        
+
         try:
             # This would use the actual git client in real implementation
             return {
@@ -144,14 +149,14 @@ class ReportGenerator:
         except Exception as e:
             self.logger.warning(f"Failed to collect Git information: {e}")
             return None
-    
+
     def _collect_artifacts(self, artifacts_dir: Path) -> List[ArtifactInfo]:
         """Collect artifact information from directory."""
         artifacts = []
-        
+
         if not artifacts_dir.exists():
             return artifacts
-        
+
         for artifact_path in artifacts_dir.rglob("*"):
             if artifact_path.is_file():
                 try:
@@ -169,24 +174,28 @@ class ReportGenerator:
                         artifact_type = "report"
                     else:
                         artifact_type = "other"
-                    
+
                     stat = artifact_path.stat()
-                    
-                    artifacts.append(ArtifactInfo(
-                        path=str(artifact_path),
-                        type=artifact_type,
-                        size=stat.st_size,
-                        created_at=datetime.fromtimestamp(stat.st_ctime),
-                        test_name=self._extract_test_name_from_path(artifact_path),
-                        description=f"{artifact_type.title()} artifact"
-                    ))
-                    
+
+                    artifacts.append(
+                        ArtifactInfo(
+                            path=str(artifact_path),
+                            type=artifact_type,
+                            size=stat.st_size,
+                            created_at=datetime.fromtimestamp(stat.st_ctime),
+                            test_name=self._extract_test_name_from_path(artifact_path),
+                            description=f"{artifact_type.title()} artifact",
+                        )
+                    )
+
                 except Exception as e:
-                    self.logger.warning(f"Failed to process artifact {artifact_path}: {e}")
+                    self.logger.warning(
+                        f"Failed to process artifact {artifact_path}: {e}"
+                    )
                     continue
-        
+
         return artifacts
-    
+
     def _extract_test_name_from_path(self, path: Path) -> Optional[str]:
         """Extract test name from artifact path."""
         # Simple heuristic: look for test name in path components
@@ -195,36 +204,38 @@ class ReportGenerator:
             if "test" in part.lower() and not part.startswith("."):
                 return part.replace(".spec", "").replace(".test", "")
         return None
-    
+
     def generate_report(
         self,
         request: ReportGenerationRequest,
         test_results: List[TestCaseResult],
         artifacts_dir: Optional[Path] = None,
-        git_client=None
+        git_client=None,
     ) -> TestRunReport:
         """
         Generate a comprehensive test report.
-        
+
         Args:
             request: Report generation request
             test_results: List of test case results
             artifacts_dir: Directory containing test artifacts
             git_client: Optional Git client for repository information
-            
+
         Returns:
             Generated test report
         """
         self.logger.info(f"Generating test report for workflow: {request.workflow_id}")
-        
+
         # Calculate summary statistics
         total_tests = len(test_results)
         passed = sum(1 for result in test_results if result.status == TestStatus.PASSED)
         failed = sum(1 for result in test_results if result.status == TestStatus.FAILED)
-        skipped = sum(1 for result in test_results if result.status == TestStatus.SKIPPED)
+        skipped = sum(
+            1 for result in test_results if result.status == TestStatus.SKIPPED
+        )
         errors = sum(1 for result in test_results if result.status == TestStatus.ERROR)
         total_duration = sum(result.duration for result in test_results)
-        
+
         summary = TestResultSummary(
             total_tests=total_tests,
             passed=passed,
@@ -232,24 +243,24 @@ class ReportGenerator:
             skipped=skipped,
             errors=errors,
             duration=total_duration,
-            success_rate=(passed / total_tests * 100) if total_tests > 0 else 0.0
+            success_rate=(passed / total_tests * 100) if total_tests > 0 else 0.0,
         )
-        
+
         # Collect artifacts if directory provided
         artifacts = []
         if artifacts_dir and request.include_artifacts:
             artifacts = self._collect_artifacts(artifacts_dir)
-        
+
         # Collect Git information if requested
         git_info = None
         if request.include_git_info:
             git_info = self._collect_git_info(git_client)
-        
+
         # Collect CI information if requested
         ci_info = None
         if request.include_ci_info:
             ci_info = self._collect_ci_info()
-        
+
         # Create the report
         report = TestRunReport(
             workflow_id=request.workflow_id,
@@ -267,21 +278,25 @@ class ReportGenerator:
                 "include_ci_info": request.include_ci_info,
             },
             git_info=git_info,
-            ci_info=ci_info
+            ci_info=ci_info,
         )
-        
+
         # Save report in requested format
         if request.output_path:
             self._save_report(report, request.format, Path(request.output_path))
-        
-        self.logger.info(f"Generated test report: {summary.passed}/{total_tests} tests passed")
+
+        self.logger.info(
+            f"Generated test report: {summary.passed}/{total_tests} tests passed"
+        )
         return report
-    
-    def _save_report(self, report: TestRunReport, format: ReportFormat, output_path: Path) -> None:
+
+    def _save_report(
+        self, report: TestRunReport, format: ReportFormat, output_path: Path
+    ) -> None:
         """Save report to file in specified format."""
         try:
             output_path.parent.mkdir(parents=True, exist_ok=True)
-            
+
             if format == ReportFormat.JSON:
                 self._save_json_report(report, output_path)
             elif format == ReportFormat.HTML:
@@ -292,21 +307,21 @@ class ReportGenerator:
                 self._save_junit_report(report, output_path)
             else:
                 raise ValueError(f"Unsupported report format: {format}")
-            
+
             self.logger.info(f"Saved {format.value} report to: {output_path}")
-            
+
         except Exception as e:
             raise FileOperationError(
                 f"Failed to save report: {e}",
                 file_path=str(output_path),
-                operation="write"
+                operation="write",
             )
-    
+
     def _save_json_report(self, report: TestRunReport, output_path: Path) -> None:
         """Save report as JSON."""
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             json.dump(report.dict(), f, indent=2, default=str)
-    
+
     def _save_html_report(self, report: TestRunReport, output_path: Path) -> None:
         """Save report as HTML."""
         try:
@@ -314,12 +329,12 @@ class ReportGenerator:
         except Exception:
             # Use a simple default template if none exists
             template = Template(self._get_default_html_template())
-        
+
         html_content = template.render(report=report)
-        
-        with open(output_path, 'w', encoding='utf-8') as f:
+
+        with open(output_path, "w", encoding="utf-8") as f:
             f.write(html_content)
-    
+
     def _save_markdown_report(self, report: TestRunReport, output_path: Path) -> None:
         """Save report as Markdown."""
         try:
@@ -327,12 +342,12 @@ class ReportGenerator:
         except Exception:
             # Use a simple default template if none exists
             template = Template(self._get_default_markdown_template())
-        
+
         markdown_content = template.render(report=report)
-        
-        with open(output_path, 'w', encoding='utf-8') as f:
+
+        with open(output_path, "w", encoding="utf-8") as f:
             f.write(markdown_content)
-    
+
     def _save_junit_report(self, report: TestRunReport, output_path: Path) -> None:
         """Save report as JUnit XML."""
         try:
@@ -340,12 +355,12 @@ class ReportGenerator:
         except Exception:
             # Use a simple default template if none exists
             template = Template(self._get_default_junit_template())
-        
+
         xml_content = template.render(report=report)
-        
-        with open(output_path, 'w', encoding='utf-8') as f:
+
+        with open(output_path, "w", encoding="utf-8") as f:
             f.write(xml_content)
-    
+
     def _get_default_html_template(self) -> str:
         """Get default HTML template."""
         return """
@@ -413,7 +428,7 @@ class ReportGenerator:
 </body>
 </html>
         """
-    
+
     def _get_default_markdown_template(self) -> str:
         """Get default Markdown template."""
         return """
@@ -457,7 +472,7 @@ class ReportGenerator:
 - **Author:** {{ report.git_info.author }}
 {% endif %}
         """
-    
+
     def _get_default_junit_template(self) -> str:
         """Get default JUnit XML template."""
         return """<?xml version="1.0" encoding="UTF-8"?>
@@ -493,37 +508,37 @@ class ReportGenerator:
     </testsuite>
 </testsuites>
         """
-    
+
     def create_ci_artifacts_package(
-        self, 
-        report: TestRunReport, 
+        self,
+        report: TestRunReport,
         artifacts_dir: Path,
-        output_path: Optional[Path] = None
+        output_path: Optional[Path] = None,
     ) -> Path:
         """
         Create a compressed package of artifacts for CI upload.
-        
+
         Args:
             report: Test report
             artifacts_dir: Directory containing artifacts
             output_path: Optional output path for package
-            
+
         Returns:
             Path to created package
         """
         if output_path is None:
             output_path = self.output_dir / f"artifacts-{report.workflow_id}.zip"
-        
+
         self.logger.info(f"Creating CI artifacts package: {output_path}")
-        
+
         try:
-            with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zipf:
                 # Add the report
                 report_path = self.output_dir / f"report-{report.workflow_id}.json"
-                with open(report_path, 'w') as f:
+                with open(report_path, "w") as f:
                     json.dump(report.dict(), f, indent=2, default=str)
                 zipf.write(report_path, "report.json")
-                
+
                 # Add artifacts
                 if artifacts_dir.exists():
                     for artifact_path in artifacts_dir.rglob("*"):
@@ -531,7 +546,7 @@ class ReportGenerator:
                             # Create relative path within zip
                             rel_path = artifact_path.relative_to(artifacts_dir)
                             zipf.write(artifact_path, f"artifacts/{rel_path}")
-                
+
                 # Add metadata
                 metadata = {
                     "workflow_id": report.workflow_id,
@@ -539,35 +554,37 @@ class ReportGenerator:
                     "environment": report.environment.value,
                     "summary": report.summary.dict(),
                 }
-                
+
                 zipf.writestr("metadata.json", json.dumps(metadata, indent=2))
-            
-            self.logger.info(f"Created artifacts package: {output_path} ({output_path.stat().st_size} bytes)")
+
+            self.logger.info(
+                f"Created artifacts package: {output_path} ({output_path.stat().st_size} bytes)"
+            )
             return output_path
-            
+
         except Exception as e:
             raise FileOperationError(
                 f"Failed to create artifacts package: {e}",
                 file_path=str(output_path),
-                operation="create_package"
+                operation="create_package",
             )
-    
+
     def generate_notification_payload(
-        self, 
+        self,
         report: TestRunReport,
         report_url: Optional[str] = None,
         artifacts_url: Optional[str] = None,
-        pr_url: Optional[str] = None
+        pr_url: Optional[str] = None,
     ) -> NotificationPayload:
         """
         Generate notification payload for CI integration.
-        
+
         Args:
             report: Test report
             report_url: Optional URL to full report
             artifacts_url: Optional URL to artifacts
             pr_url: Optional URL to created PR
-            
+
         Returns:
             Notification payload
         """
@@ -578,20 +595,20 @@ class ReportGenerator:
             status = "error"
         else:
             status = "success"
-        
+
         return NotificationPayload(
             workflow_id=report.workflow_id,
             status=status,
             summary=report.summary,
             report_url=report_url,
             artifacts_url=artifacts_url,
-            pr_url=pr_url
+            pr_url=pr_url,
         )
-    
+
     def get_ci_environment(self) -> CIEnvironment:
         """Get detected CI environment."""
         return self.ci_environment
-    
+
     def is_ci_environment(self) -> bool:
         """Check if running in CI environment."""
         return self.ci_environment != CIEnvironment.LOCAL
