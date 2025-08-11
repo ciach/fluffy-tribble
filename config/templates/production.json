@@ -1,0 +1,14 @@
+{
+  "name": "production",
+  "description": "Production environment configuration",
+  "environment": "production",
+  "config_overrides": {
+    "ci_mode": true,
+    "headless_mode": true,
+    "log_level": "WARN",
+    "log_format": "json",
+    "artifact_retention_days": 30
+  },
+  "required_env_vars": ["OPENAI_API_KEY"],
+  "optional_env_vars": []
+}

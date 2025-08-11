@@ -1,0 +1,14 @@
+{
+  "name": "local-ollama",
+  "description": "Local development with Ollama-only configuration",
+  "environment": "development",
+  "config_overrides": {
+    "ci_mode": false,
+    "headless_mode": false,
+    "log_level": "DEBUG",
+    "model_provider": "ollama",
+    "artifact_retention_days": 7
+  },
+  "required_env_vars": [],
+  "optional_env_vars": ["OLLAMA_BASE_URL"]
+}

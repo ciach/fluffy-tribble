@@ -1,1 +1,7 @@
-{\n  "mcpServers": {\n    "playwright": { "command": "npx", "args": ["@playwright/mcp@latest"] },\n    "filesystem": { "command": "node", "args": ["./servers/fs-mcp.js"] },\n    "git": { "command": "uvx", "args": ["git-mcp-server@latest"] }\n  }\n}
+{
+  "mcpServers": {
+    "playwright": { "command": "npx", "args": ["@playwright/mcp@latest"] },
+    "filesystem": { "command": "node", "args": ["./servers/fs-mcp.js"] },
+    "git": { "command": "uvx", "args": ["git-mcp-server@latest"] }
+  }
+}

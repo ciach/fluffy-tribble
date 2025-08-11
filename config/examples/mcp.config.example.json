@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest"]
+    },
+    "filesystem": {
+      "command": "node",
+      "args": ["./servers/fs-mcp.js"]
+    },
+    "git": {
+      "command": "uvx",
+      "args": ["git-mcp-server@latest"]
+    }
+  }
+}

@@ -31,7 +31,7 @@ setup(
     install_requires=requirements,
     entry_points={
         "console_scripts": [
-            "qa-operator=orchestrator.app:main",
+            "qa-operator=orchestrator.cli:main",
         ],
     },
     classifiers=[

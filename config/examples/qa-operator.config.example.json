@@ -1,0 +1,14 @@
+{
+  "ci_mode": false,
+  "headless_mode": null,
+  "log_level": "INFO",
+  "log_format": "text",
+  "model_provider": "mixed",
+  "artifact_retention_days": 7,
+  "project_root": ".",
+  "e2e_dir": "./e2e",
+  "artifacts_dir": "./artifacts",
+  "logs_dir": "./logs",
+  "policies_dir": "./policies",
+  "ollama_base_url": "http://localhost:11434"
+}

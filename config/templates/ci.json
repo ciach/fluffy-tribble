@@ -1,0 +1,14 @@
+{
+  "name": "ci",
+  "description": "Continuous Integration environment configuration",
+  "environment": "ci",
+  "config_overrides": {
+    "ci_mode": true,
+    "headless_mode": true,
+    "log_level": "INFO",
+    "log_format": "json",
+    "artifact_retention_days": 30
+  },
+  "required_env_vars": ["OPENAI_API_KEY"],
+  "optional_env_vars": ["QA_OPERATOR_LOG_LEVEL"]
+}
