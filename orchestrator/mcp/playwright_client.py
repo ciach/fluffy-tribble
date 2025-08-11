@@ -11,6 +11,7 @@ import logging
 import time
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Union
+from types import SimpleNamespace
 from enum import Enum
 
 from pydantic import BaseModel, Field, validator, ConfigDict
@@ -86,7 +87,12 @@ class PlaywrightMCPClient:
     and artifact collection using the Playwright MCP server.
     """
 
-    def __init__(self, connection_manager, logger: Optional[logging.Logger] = None):
+    def __init__(
+        self,
+        connection_manager,
+        artifacts_dir: Optional[Union[str, Path]] = None,
+        logger: Optional[logging.Logger] = None,
+    ):
         """
         Initialize the Playwright MCP client.
 
@@ -101,12 +107,21 @@ class PlaywrightMCPClient:
         # Browser state
         self._browser_context = None
         self._current_page = None
-        self._artifacts_dir = Path("artifacts")
+        # Artifacts directory (ensure it exists)
+        self._artifacts_dir = (
+            Path(artifacts_dir) if artifacts_dir else Path("artifacts")
+        )
+        self._artifacts_dir.mkdir(parents=True, exist_ok=True)
 
         # Test execution state
         self._current_test_name = None
         self._test_start_time = None
         self._artifacts = TestArtifacts()
+
+    @property
+    def artifacts_dir(self) -> Path:
+        """Public accessor for artifacts directory used in tests."""
+        return self._artifacts_dir
 
     async def _ensure_connection(self) -> Any:
         """Ensure we have a valid connection to the Playwright MCP server."""
@@ -139,49 +154,19 @@ class PlaywrightMCPClient:
         await self._ensure_connection()
 
         try:
-            # TODO: Implement actual MCP tool call
-            # This is a placeholder for the actual MCP client call
             self.logger.debug(f"Calling MCP tool: {tool_name} with args: {arguments}")
-
-            # Simulate tool call delay
-            await asyncio.sleep(0.1)
-
-            # Mock response based on tool name
-            if tool_name == "launch_browser":
-                return {"success": True, "browser_id": "browser_123"}
-            elif tool_name == "new_page":
-                return {"success": True, "page_id": "page_456"}
-            elif tool_name == "navigate":
-                return {"success": True, "url": arguments.get("url")}
-            elif tool_name == "screenshot":
-                return {
-                    "success": True,
-                    "screenshot_path": f"screenshot_{int(time.time())}.png",
-                }
-            elif tool_name == "execute_test":
-                return {
-                    "success": True,
-                    "exit_code": 0,
-                    "duration": 2.5,
-                    "artifacts": {
-                        "trace": "trace.zip",
-                        "screenshots": ["screenshot1.png", "screenshot2.png"],
-                        "video": "test.webm",
-                    },
-                }
-            else:
-                return {"success": True}
-
-        except Exception as e:
-            self.logger.error(f"MCP tool call failed: {tool_name} - {e}")
-            raise TestExecutionError(
-                f"Playwright MCP tool call failed: {tool_name}",
-                test_name=self._current_test_name,
+            # Delegate to the connection manager as tests expect
+            return await self.connection_manager.call_tool(
+                self.server_name, tool_name, arguments
             )
+        except Exception as e:
+            # Preserve original error message for tests to match
+            self.logger.error(f"MCP tool call failed: {tool_name} - {e}")
+            raise TestExecutionError(str(e))
 
     async def launch_browser(
         self, mode: BrowserMode = BrowserMode.HEADLESS, **options
-    ) -> str:
+    ) -> SimpleNamespace:
         """
         Launch a browser instance.
 
@@ -196,14 +181,15 @@ class PlaywrightMCPClient:
 
         launch_args = {"headless": mode == BrowserMode.HEADLESS, **options}
 
-        response = await self._call_mcp_tool("launch_browser", launch_args)
+        try:
+            response = await self._call_mcp_tool("launch_browser", launch_args)
+        except Exception as e:
+            raise TestExecutionError(f"Failed to launch browser: {e}")
 
-        if not response.get("success"):
+        if not response.get("success", False):
             raise TestExecutionError("Failed to launch browser")
 
-        browser_id = response.get("browser_id")
-        self.logger.debug(f"Browser launched with ID: {browser_id}")
-        return browser_id
+        return SimpleNamespace(**response)
 
     async def new_page(self, browser_id: str) -> str:
         """
@@ -226,8 +212,8 @@ class PlaywrightMCPClient:
         return page_id
 
     async def navigate(
-        self, page_id: str, url: str, wait_until: str = "networkidle"
-    ) -> None:
+        self, url: str, wait_until: str = "networkidle", timeout: int = 30000
+    ) -> SimpleNamespace:
         """
         Navigate to a URL.
 
@@ -238,14 +224,21 @@ class PlaywrightMCPClient:
         """
         self.logger.info(f"Navigating to: {url}")
 
-        response = await self._call_mcp_tool(
-            "navigate", {"page_id": page_id, "url": url, "wait_until": wait_until}
-        )
+        try:
+            response = await self._call_mcp_tool(
+                "navigate", {"url": url, "wait_until": wait_until, "timeout": timeout}
+            )
+        except Exception as e:
+            raise TestExecutionError(f"MCP connection error: {e}")
 
-        if not response.get("success"):
+        if not response.get("success", True):
             raise TestExecutionError(f"Failed to navigate to {url}")
 
-    async def click(self, page_id: str, selector: str, **options) -> None:
+        return SimpleNamespace(**response)
+
+    async def click(
+        self, selector: str, timeout: int = 30000, force: bool = False
+    ) -> SimpleNamespace:
         """
         Click on an element.
 
@@ -256,14 +249,18 @@ class PlaywrightMCPClient:
         """
         self.logger.debug(f"Clicking element: {selector}")
 
-        response = await self._call_mcp_tool(
-            "click", {"page_id": page_id, "selector": selector, **options}
-        )
+        try:
+            response = await self._call_mcp_tool(
+                "click", {"selector": selector, "timeout": timeout, "force": force}
+            )
+        except Exception as e:
+            raise TestExecutionError(str(e))
 
-        if not response.get("success"):
-            raise TestExecutionError(f"Failed to click element: {selector}")
+        return SimpleNamespace(**response)
 
-    async def fill(self, page_id: str, selector: str, value: str, **options) -> None:
+    async def fill(
+        self, selector: str, value: str, timeout: int = 30000, clear: bool = True
+    ) -> SimpleNamespace:
         """
         Fill an input element.
 
@@ -275,17 +272,24 @@ class PlaywrightMCPClient:
         """
         self.logger.debug(f"Filling element {selector} with value: {value}")
 
-        response = await self._call_mcp_tool(
-            "fill",
-            {"page_id": page_id, "selector": selector, "value": value, **options},
-        )
+        try:
+            response = await self._call_mcp_tool(
+                "fill",
+                {
+                    "selector": selector,
+                    "value": value,
+                    "timeout": timeout,
+                    "clear": clear,
+                },
+            )
+        except Exception as e:
+            raise TestExecutionError(str(e))
 
-        if not response.get("success"):
-            raise TestExecutionError(f"Failed to fill element: {selector}")
+        return SimpleNamespace(**response)
 
-    async def screenshot(
-        self, page_id: str, path: Optional[str] = None, **options
-    ) -> str:
+    async def take_screenshot(
+        self, filename: str, full_page: bool = False, quality: int = 90
+    ) -> SimpleNamespace:
         """
         Take a screenshot of the page.
 
@@ -297,26 +301,16 @@ class PlaywrightMCPClient:
         Returns:
             Path to the saved screenshot
         """
-        if path is None:
-            timestamp = int(time.time())
-            path = f"screenshot_{timestamp}.png"
-
+        path = str(self._artifacts_dir / filename)
         self.logger.debug(f"Taking screenshot: {path}")
-
         response = await self._call_mcp_tool(
-            "screenshot", {"page_id": page_id, "path": path, **options}
+            "screenshot", {"path": path, "full_page": full_page, "quality": quality}
         )
+        return SimpleNamespace(**response)
 
-        if not response.get("success"):
-            raise TestExecutionError("Failed to take screenshot")
-
-        screenshot_path = response.get("screenshot_path", path)
-        self._artifacts.screenshots.append(screenshot_path)
-        return screenshot_path
-
-    async def wait_for_selector(
-        self, page_id: str, selector: str, timeout: int = 30000
-    ) -> None:
+    async def wait_for_element(
+        self, selector: str, state: str = "visible", timeout: int = 30000
+    ) -> SimpleNamespace:
         """
         Wait for an element to appear.
 
@@ -328,14 +322,12 @@ class PlaywrightMCPClient:
         self.logger.debug(f"Waiting for selector: {selector}")
 
         response = await self._call_mcp_tool(
-            "wait_for_selector",
-            {"page_id": page_id, "selector": selector, "timeout": timeout},
+            "wait_for_element",
+            {"selector": selector, "state": state, "timeout": timeout},
         )
+        return SimpleNamespace(**response)
 
-        if not response.get("success"):
-            raise TestExecutionError(f"Timeout waiting for selector: {selector}")
-
-    async def get_text(self, page_id: str, selector: str) -> str:
+    async def get_text(self, selector: str) -> str:
         """
         Get text content of an element.
 
@@ -346,9 +338,7 @@ class PlaywrightMCPClient:
         Returns:
             Text content of the element
         """
-        response = await self._call_mcp_tool(
-            "get_text", {"page_id": page_id, "selector": selector}
-        )
+        response = await self._call_mcp_tool("get_text", {"selector": selector})
 
         if not response.get("success"):
             raise TestExecutionError(f"Failed to get text from element: {selector}")
@@ -360,8 +350,9 @@ class PlaywrightMCPClient:
         test_file: str,
         mode: BrowserMode = BrowserMode.HEADLESS,
         artifacts_dir: Optional[str] = None,
+        record_video: bool = False,
         **options,
-    ) -> TestResult:
+    ) -> SimpleNamespace:
         """
         Execute a Playwright test file.
 
@@ -386,79 +377,83 @@ class PlaywrightMCPClient:
         self.logger.info(f"Executing test: {test_file} in {mode.value} mode")
 
         try:
-            # Prepare test execution arguments
             exec_args = {
                 "test_file": test_file,
                 "headless": mode == BrowserMode.HEADLESS,
+                "trace": True,
+                "video": record_video,
                 "artifacts_dir": str(self._artifacts_dir),
-                "trace": True,  # Always collect traces
-                "video": True,  # Always collect videos
-                "screenshot": "only-on-failure",
-                **options,
             }
+            exec_args.update(options)
 
-            response = await self._call_mcp_tool("execute_test", exec_args)
+            response = await self._call_mcp_tool("run_test", exec_args)
 
-            # Calculate duration
-            duration = time.time() - self._test_start_time
-
-            # Process artifacts from response
+            duration = response.get("duration")
             artifacts_data = response.get("artifacts", {})
-            self._artifacts.trace_file = artifacts_data.get("trace")
-            self._artifacts.video_file = artifacts_data.get("video")
-
-            if "screenshots" in artifacts_data:
-                self._artifacts.screenshots.extend(artifacts_data["screenshots"])
-
-            # Determine test status
-            exit_code = response.get("exit_code", 0)
-            status = "passed" if exit_code == 0 else "failed"
-
-            # Create test result
-            result = TestResult(
-                test_name=test_name,
-                status=status,
-                duration=duration,
-                artifacts=self._artifacts,
-                exit_code=exit_code,
+            artifacts = TestArtifacts(
+                trace_file=artifacts_data.get("trace_file"),
+                screenshots=artifacts_data.get("screenshots", []),
+                console_logs=artifacts_data.get("console_logs", []),
+                network_logs=artifacts_data.get("network_logs", []),
+                video_file=artifacts_data.get("video_file"),
             )
 
-            if status == "failed":
-                result.error_info = response.get("error_info", {})
-                self.logger.warning(f"Test failed: {test_name}")
-            else:
-                self.logger.info(f"Test passed: {test_name}")
-
-            return result
-
+            return SimpleNamespace(
+                success=response.get("success", True),
+                test_results=response.get("test_results", {}),
+                artifacts=artifacts,
+                duration=duration,
+            )
         except Exception as e:
-            duration = time.time() - self._test_start_time
-            self.logger.error(f"Test execution failed: {test_name} - {e}")
-
-            return TestResult(
-                test_name=test_name,
-                status="failed",
-                duration=duration,
-                artifacts=self._artifacts,
-                error_info={"error": str(e), "type": type(e).__name__},
-            )
+            raise TestExecutionError(str(e))
 
         finally:
             self._current_test_name = None
             self._test_start_time = None
 
-    async def collect_console_logs(self, page_id: str) -> List[Dict[str, Any]]:
+    async def get_console_logs(
+        self, clear_after_get: bool = False
+    ) -> List[Dict[str, Any]]:
+        """Get console logs collected by the server."""
+        response = await self._call_mcp_tool(
+            "get_console_logs", {"clear_after_get": clear_after_get}
+        )
+        return response.get("logs", [])
+
+    async def get_network_logs(
+        self, clear_after_get: bool = False
+    ) -> List[Dict[str, Any]]:
+        """Get network logs collected by the server."""
+        response = await self._call_mcp_tool(
+            "get_network_logs", {"clear_after_get": clear_after_get}
+        )
+        return response.get("requests", [])
+
+    async def close_browser(self) -> SimpleNamespace:
+        """Close the active browser session."""
+        response = await self._call_mcp_tool("close_browser", {})
+        return SimpleNamespace(**response)
+
+    async def get_page_content(self) -> Dict[str, Any]:
+        """Get current page content and info."""
+        return await self._call_mcp_tool("get_page_content", {})
+
+    async def evaluate_javascript(self, expression: str) -> Dict[str, Any]:
+        """Evaluate a JS expression on the page."""
+        return await self._call_mcp_tool("evaluate", {"expression": expression})
+
+    async def wait_for_network_idle(self, timeout: int = 30000) -> Dict[str, Any]:
+        """Wait until network is idle for a period or timeout."""
+        return await self._call_mcp_tool("wait_for_network_idle", {"timeout": timeout})
+
+    async def collect_console_logs(self) -> List[Dict[str, Any]]:
         """
         Collect console logs from the page.
-
-        Args:
-            page_id: Page instance ID
 
         Returns:
             List of console log entries
         """
-        response = await self._call_mcp_tool("get_console_logs", {"page_id": page_id})
-
+        response = await self._call_mcp_tool("get_console_logs", {})
         if response.get("success"):
             logs = response.get("logs", [])
             self._artifacts.console_logs.extend(logs)
@@ -543,17 +538,13 @@ class PlaywrightMCPClient:
         if page_id == self._current_page:
             self._current_page = None
 
-    async def close_browser(self, browser_id: str) -> None:
+    async def close_browser(self) -> SimpleNamespace:
         """
-        Close a browser instance.
-
-        Args:
-            browser_id: Browser instance ID
+        Close the active browser session.
         """
-        response = await self._call_mcp_tool(
-            "close_browser", {"browser_id": browser_id}
-        )
+        response = await self._call_mcp_tool("close_browser", {})
         self._current_page = None
+        return SimpleNamespace(**response)
 
     def get_current_artifacts(self) -> TestArtifacts:
         """

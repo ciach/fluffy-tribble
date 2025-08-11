@@ -1,0 +1,55 @@
+{
+  "id": "ecommerce-checkout-001",
+  "name": "E-commerce Checkout Process",
+  "description": "End-to-end e-commerce checkout flow from product selection to order completion",
+  "requirements": [
+    "User can browse and select products from catalog",
+    "User can add products to shopping cart",
+    "User can modify quantities in shopping cart",
+    "User can remove items from shopping cart",
+    "User can proceed through checkout process",
+    "User can enter shipping and billing information",
+    "User can select payment method and complete purchase",
+    "Order confirmation is displayed after successful purchase",
+    "User receives order confirmation email"
+  ],
+  "priority": "high",
+  "tags": ["e-commerce", "checkout", "payment", "critical-path"],
+  "metadata": {
+    "test_data": {
+      "products": [
+        {"id": "prod-001", "name": "Wireless Headphones", "price": 99.99},
+        {"id": "prod-002", "name": "Bluetooth Speaker", "price": 149.99}
+      ],
+      "shipping_info": {
+        "first_name": "John",
+        "last_name": "Doe",
+        "address": "123 Main St",
+        "city": "Anytown",
+        "state": "CA",
+        "zip": "12345",
+        "phone": "555-123-4567"
+      },
+      "payment_info": {
+        "card_number": "4111111111111111",
+        "expiry": "12/25",
+        "cvv": "123",
+        "name": "John Doe"
+      }
+    },
+    "expected_pages": [
+      "/products",
+      "/cart",
+      "/checkout/shipping",
+      "/checkout/payment",
+      "/checkout/review",
+      "/order-confirmation"
+    ],
+    "success_criteria": {
+      "cart_item_count": "[data-testid='cart-count']",
+      "checkout_button": "[data-testid='checkout-button']",
+      "order_total": "[data-testid='order-total']",
+      "confirmation_number": "[data-testid='order-number']"
+    }
+  }
+}

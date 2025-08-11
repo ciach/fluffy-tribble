@@ -20,7 +20,7 @@ class TestConfig:
     def test_default_config_creation(self):
         """Test creating config with default values."""
         config = Config()
-        
+
         assert config.ci_mode is False  # Default when CI env var not set
         assert config.headless_mode is None
         assert config.log_level == "INFO"
@@ -33,7 +33,7 @@ class TestConfig:
     def test_ci_mode_detection(self):
         """Test CI mode detection from environment variable."""
         config = Config()
-        
+
         assert config.ci_mode is True
         assert config.log_format == "json"  # Should switch to JSON in CI
 
@@ -41,26 +41,29 @@ class TestConfig:
     def test_ci_mode_false(self):
         """Test CI mode when explicitly set to false."""
         config = Config()
-        
+
         assert config.ci_mode is False
 
     @patch.dict(os.environ, {"QA_OPERATOR_HEADLESS": "true"})
     def test_headless_mode_override(self):
         """Test headless mode override via environment variable."""
         config = Config()
-        
+
         assert config.headless_mode is True
 
-    @patch.dict(os.environ, {
-        "QA_OPERATOR_LOG_LEVEL": "DEBUG",
-        "QA_OPERATOR_MODEL_PROVIDER": "openai",
-        "OPENAI_API_KEY": "test-key",
-        "OLLAMA_BASE_URL": "http://custom:11434"
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "QA_OPERATOR_LOG_LEVEL": "DEBUG",
+            "QA_OPERATOR_MODEL_PROVIDER": "openai",
+            "OPENAI_API_KEY": "test-key",
+            "OLLAMA_BASE_URL": "http://custom:11434",
+        },
+    )
     def test_environment_variable_override(self):
         """Test all environment variable overrides."""
         config = Config()
-        
+
         assert config.log_level == "DEBUG"
         assert config.model_provider == "openai"
         assert config.openai_api_key == "test-key"
@@ -70,7 +73,7 @@ class TestConfig:
         """Test creating config from environment using class method."""
         with patch.dict(os.environ, {"CI": "true", "QA_OPERATOR_LOG_LEVEL": "ERROR"}):
             config = Config.from_env()
-            
+
             assert config.ci_mode is True
             assert config.log_level == "ERROR"
 
@@ -78,7 +81,7 @@ class TestConfig:
         """Test validation of valid configuration."""
         config = Config()
         config.openai_api_key = "test-key"
-        
+
         # Should not raise any exceptions
         config.validate()
 
@@ -87,7 +90,7 @@ class TestConfig:
         config = Config()
         config.model_provider = "mixed"
         config.openai_api_key = None
-        
+
         with pytest.raises(ValidationError, match="OpenAI API key is required"):
             config.validate()
 
@@ -96,7 +99,7 @@ class TestConfig:
         config = Config()
         config.model_provider = "openai"
         config.openai_api_key = None
-        
+
         with pytest.raises(ValidationError, match="OpenAI API key is required"):
             config.validate()
 
@@ -105,7 +108,7 @@ class TestConfig:
         config = Config()
         config.model_provider = "ollama"
         config.openai_api_key = None
-        
+
         # Should not raise any exceptions
         config.validate()
 
@@ -113,7 +116,7 @@ class TestConfig:
         """Test validation fails for invalid log level."""
         config = Config()
         config.log_level = "INVALID"
-        
+
         with pytest.raises(ValidationError, match="Invalid log level"):
             config.validate()
 
@@ -121,7 +124,7 @@ class TestConfig:
         """Test validation fails for invalid model provider."""
         config = Config()
         config.model_provider = "invalid"
-        
+
         with pytest.raises(ValidationError, match="Invalid model provider"):
             config.validate()
 
@@ -129,9 +132,9 @@ class TestConfig:
         """Test converting config to dictionary."""
         config = Config()
         config.openai_api_key = "test-key"
-        
+
         config_dict = config.to_dict()
-        
+
         assert isinstance(config_dict, dict)
         assert config_dict["model_provider"] == "mixed"
         assert config_dict["log_level"] == "INFO"
@@ -142,7 +145,7 @@ class TestConfig:
         # Local development
         config = Config()
         assert config.artifact_retention_days == 7
-        
+
         # CI environment
         with patch.dict(os.environ, {"CI": "true"}):
             config = Config()
@@ -159,12 +162,12 @@ class TestConfig:
         # Default behavior - follow CI mode
         config = Config()
         assert config.get_effective_headless_mode() is False
-        
+
         # CI mode should default to headless
         with patch.dict(os.environ, {"CI": "true"}):
             config = Config()
             assert config.get_effective_headless_mode() is True
-        
+
         # Explicit override should take precedence
         with patch.dict(os.environ, {"QA_OPERATOR_HEADLESS": "true"}):
             config = Config()
@@ -173,7 +176,7 @@ class TestConfig:
     def test_get_log_file_path(self):
         """Test getting log file path based on configuration."""
         config = Config()
-        
+
         log_path = config.get_log_file_path()
         assert isinstance(log_path, Path)
         assert log_path.name == "qa-operator.log"
@@ -182,7 +185,7 @@ class TestConfig:
     def test_get_debug_log_dir(self):
         """Test getting debug log directory path."""
         config = Config()
-        
+
         debug_dir = config.get_debug_log_dir()
         assert isinstance(debug_dir, Path)
         assert debug_dir.name == "debug"

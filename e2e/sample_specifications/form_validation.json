@@ -1,0 +1,52 @@
+{
+  "id": "form-validation-001",
+  "name": "Form Validation and Submission",
+  "description": "Comprehensive form validation testing including client-side and server-side validation",
+  "requirements": [
+    "Required fields show validation errors when empty",
+    "Email fields validate email format",
+    "Phone number fields validate phone format",
+    "Password fields enforce complexity requirements",
+    "Form submission is prevented when validation errors exist",
+    "Success message is shown after valid form submission",
+    "Form data is properly sanitized and stored",
+    "File upload fields validate file types and sizes"
+  ],
+  "priority": "medium",
+  "tags": ["forms", "validation", "user-input", "security"],
+  "metadata": {
+    "test_data": {
+      "valid_data": {
+        "name": "Jane Smith",
+        "email": "jane.smith@example.com",
+        "phone": "+1-555-987-6543",
+        "password": "ComplexPassword123!",
+        "confirm_password": "ComplexPassword123!",
+        "age": "25",
+        "terms_accepted": true
+      },
+      "invalid_data": [
+        {"field": "email", "value": "invalid-email", "expected_error": "Please enter a valid email address"},
+        {"field": "phone", "value": "123", "expected_error": "Please enter a valid phone number"},
+        {"field": "password", "value": "weak", "expected_error": "Password must be at least 8 characters"},
+        {"field": "confirm_password", "value": "different", "expected_error": "Passwords do not match"},
+        {"field": "age", "value": "15", "expected_error": "Must be 18 or older"}
+      ],
+      "file_upload": {
+        "valid_files": ["document.pdf", "image.jpg"],
+        "invalid_files": ["malware.exe", "large_file.zip"]
+      }
+    },
+    "expected_pages": [
+      "/contact-form",
+      "/registration",
+      "/profile-update"
+    ],
+    "success_criteria": {
+      "error_message_selector": "[data-testid='field-error']",
+      "success_message_selector": "[data-testid='success-message']",
+      "submit_button": "[data-testid='submit-button']",
+      "form_container": "[data-testid='form-container']"
+    }
+  }
+}

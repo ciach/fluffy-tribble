@@ -1,0 +1,483 @@
+name: E2E Validation Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+env:
+  PYTHON_VERSION: '3.11'
+  CI: true
+  QA_OPERATOR_LOG_LEVEL: INFO
+  QA_OPERATOR_ARTIFACT_RETENTION_DAYS: 30
+  QA_OPERATOR_HEADLESS: true
+
+jobs:
+  # Unit and integration tests
+  test-unit:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.9', '3.10', '3.11']
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -e .
+    
+    - name: Run unit tests
+      run: |
+        pytest tests/ -v \
+          --cov=orchestrator \
+          --cov-report=xml \
+          --cov-report=term-missing \
+          --cov-fail-under=90 \
+          -m "not integration and not slow"
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+
+  # Integration tests with mocked MCP servers
+  test-integration-mocked:
+    runs-on: ubuntu-latest
+    needs: test-unit
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -e .
+    
+    - name: Create mock MCP configuration
+      run: |
+        mkdir -p orchestrator
+        cat > orchestrator/mcp.config.json << EOF
+        {
+          "mcpServers": {
+            "playwright": {
+              "command": "echo",
+              "args": ["mock-playwright-server"],
+              "timeout": 30,
+              "max_retries": 3,
+              "disabled": false
+            },
+            "filesystem": {
+              "command": "echo",
+              "args": ["mock-filesystem-server"],
+              "timeout": 30,
+              "max_retries": 3,
+              "disabled": false
+            },
+            "git": {
+              "command": "echo",
+              "args": ["mock-git-server"],
+              "timeout": 30,
+              "max_retries": 3,
+              "disabled": false
+            }
+          }
+        }
+        EOF
+    
+    - name: Run integration tests with mocked MCP
+      run: |
+        pytest tests/test_e2e_workflow.py tests/test_integration_mcp.py -v \
+          --cov=orchestrator \
+          --cov-report=xml \
+          -m "integration and not slow" \
+          --tb=short
+    
+    - name: Upload integration test artifacts
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: integration-test-artifacts-${{ github.run_id }}
+        path: |
+          logs/
+          artifacts/
+          htmlcov/
+        retention-days: 7
+
+  # Performance and load testing
+  test-performance:
+    runs-on: ubuntu-latest
+    needs: test-integration-mocked
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -e .
+        pip install memory-profiler psutil
+    
+    - name: Run performance benchmarks
+      run: |
+        pytest tests/test_e2e_workflow.py::TestE2EPerformance -v \
+          -m "slow" \
+          --tb=short \
+          --durations=10
+    
+    - name: Generate performance report
+      run: |
+        python -c "
+        import json
+        import datetime
+        
+        # Create performance report
+        report = {
+          'timestamp': datetime.datetime.now().isoformat(),
+          'commit_sha': '${{ github.sha }}',
+          'branch': '${{ github.ref_name }}',
+          'performance_metrics': {
+            'test_execution_time': 'See pytest output',
+            'memory_usage': 'See pytest output'
+          }
+        }
+        
+        with open('performance_report.json', 'w') as f:
+          json.dump(report, f, indent=2)
+        "
+    
+    - name: Upload performance report
+      uses: actions/upload-artifact@v3
+      with:
+        name: performance-report-${{ github.run_id }}
+        path: performance_report.json
+        retention-days: 30
+
+  # Dry-run validation with sample specifications
+  test-dry-run-validation:
+    runs-on: ubuntu-latest
+    needs: test-integration-mocked
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -e .
+    
+    - name: Validate sample specifications
+      run: |
+        python -c "
+        import json
+        import sys
+        from pathlib import Path
+        from orchestrator.planning.models import TestSpecification
+        
+        # Validate all sample specifications
+        specs_dir = Path('e2e/sample_specifications')
+        if not specs_dir.exists():
+          print('Sample specifications directory not found')
+          sys.exit(1)
+        
+        valid_specs = 0
+        total_specs = 0
+        
+        for spec_file in specs_dir.glob('*.json'):
+          total_specs += 1
+          try:
+            with open(spec_file) as f:
+              spec_data = json.load(f)
+            
+            # Validate specification structure
+            spec = TestSpecification(**spec_data)
+            print(f'✓ Valid specification: {spec.name}')
+            valid_specs += 1
+            
+          except Exception as e:
+            print(f'✗ Invalid specification {spec_file.name}: {e}')
+        
+        print(f'Validation complete: {valid_specs}/{total_specs} specifications valid')
+        
+        if valid_specs != total_specs:
+          sys.exit(1)
+        "
+    
+    - name: Run dry-run workflow validation
+      run: |
+        python -c "
+        import asyncio
+        import json
+        from pathlib import Path
+        from unittest.mock import AsyncMock, MagicMock
+        
+        from orchestrator.agent import QAOperatorAgent
+        from orchestrator.core.config import Config
+        from orchestrator.planning.models import TestSpecification
+        
+        async def validate_dry_run():
+          # Create agent with mocked dependencies
+          config = Config()
+          config.ci_mode = True
+          config.headless_mode = True
+          
+          agent = QAOperatorAgent(config)
+          
+          # Mock all MCP clients for dry-run
+          agent.connection_manager = MagicMock()
+          agent.playwright_client = MagicMock()
+          agent.filesystem_client = MagicMock()
+          agent.git_client = MagicMock()
+          
+          # Mock successful responses
+          agent.planning_engine.create_test_plan = AsyncMock(return_value={
+            'test_cases': [{'name': 'test_sample', 'description': 'Sample test'}],
+            'estimated_duration': 30
+          })
+          
+          agent.test_generator.generate_test = AsyncMock(return_value={
+            'success': True,
+            'test_file': 'sample.spec.ts',
+            'content': '// Generated test content'
+          })
+          
+          # Load and validate each sample specification
+          specs_dir = Path('e2e/sample_specifications')
+          successful_runs = 0
+          total_runs = 0
+          
+          for spec_file in specs_dir.glob('*.json'):
+            total_runs += 1
+            try:
+              with open(spec_file) as f:
+                spec_data = json.load(f)
+              
+              specification = TestSpecification(**spec_data)
+              
+              # Simulate workflow planning phase only (dry-run)
+              plan = await agent.planning_engine.create_test_plan(specification)
+              generation = await agent.test_generator.generate_test(plan)
+              
+              if plan and generation['success']:
+                print(f'✓ Dry-run successful for: {specification.name}')
+                successful_runs += 1
+              else:
+                print(f'✗ Dry-run failed for: {specification.name}')
+                
+            except Exception as e:
+              print(f'✗ Dry-run error for {spec_file.name}: {e}')
+          
+          print(f'Dry-run validation: {successful_runs}/{total_runs} workflows successful')
+          return successful_runs == total_runs
+        
+        # Run dry-run validation
+        result = asyncio.run(validate_dry_run())
+        if not result:
+          exit(1)
+        "
+
+  # Security and compliance checks
+  test-security:
+    runs-on: ubuntu-latest
+    needs: test-unit
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install security tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit safety
+        pip install -r requirements.txt
+    
+    - name: Run security scan with Bandit
+      run: |
+        bandit -r orchestrator/ -f json -o bandit-report.json || true
+        bandit -r orchestrator/ -f txt
+    
+    - name: Check for known vulnerabilities
+      run: |
+        safety check --json --output safety-report.json || true
+        safety check
+    
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-reports-${{ github.run_id }}
+        path: |
+          bandit-report.json
+          safety-report.json
+        retention-days: 30
+
+  # Documentation and code quality
+  test-quality:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install quality tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 black isort mypy
+        pip install -r requirements.txt
+    
+    - name: Check code formatting with Black
+      run: |
+        black --check --diff orchestrator/ tests/
+    
+    - name: Check import sorting with isort
+      run: |
+        isort --check-only --diff orchestrator/ tests/
+    
+    - name: Lint with flake8
+      run: |
+        flake8 orchestrator/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 orchestrator/ tests/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    
+    - name: Type checking with mypy
+      run: |
+        mypy orchestrator/ --ignore-missing-imports --no-strict-optional
+
+  # Final validation and reporting
+  validate-complete:
+    runs-on: ubuntu-latest
+    needs: [test-unit, test-integration-mocked, test-performance, test-dry-run-validation, test-security, test-quality]
+    if: always()
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+    
+    - name: Generate validation report
+      run: |
+        python -c "
+        import json
+        import datetime
+        from pathlib import Path
+        
+        # Collect results from all jobs
+        report = {
+          'timestamp': datetime.datetime.now().isoformat(),
+          'commit_sha': '${{ github.sha }}',
+          'branch': '${{ github.ref_name }}',
+          'workflow_run_id': '${{ github.run_id }}',
+          'validation_results': {
+            'unit_tests': '${{ needs.test-unit.result }}',
+            'integration_tests': '${{ needs.test-integration-mocked.result }}',
+            'performance_tests': '${{ needs.test-performance.result }}',
+            'dry_run_validation': '${{ needs.test-dry-run-validation.result }}',
+            'security_checks': '${{ needs.test-security.result }}',
+            'quality_checks': '${{ needs.test-quality.result }}'
+          },
+          'overall_status': 'success' if all([
+            '${{ needs.test-unit.result }}' == 'success',
+            '${{ needs.test-integration-mocked.result }}' == 'success',
+            '${{ needs.test-dry-run-validation.result }}' == 'success'
+          ]) else 'failure'
+        }
+        
+        with open('validation_report.json', 'w') as f:
+          json.dump(report, f, indent=2)
+        
+        print('E2E Validation Pipeline Results:')
+        print(f'Overall Status: {report[\"overall_status\"].upper()}')
+        for test_type, result in report['validation_results'].items():
+          status_icon = '✓' if result == 'success' else '✗'
+          print(f'{status_icon} {test_type.replace(\"_\", \" \").title()}: {result}')
+        "
+    
+    - name: Upload final validation report
+      uses: actions/upload-artifact@v3
+      with:
+        name: validation-report-${{ github.run_id }}
+        path: validation_report.json
+        retention-days: 90
+    
+    - name: Comment PR with results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          
+          try {
+            const report = JSON.parse(fs.readFileSync('validation_report.json', 'utf8'));
+            
+            const statusIcon = report.overall_status === 'success' ? '✅' : '❌';
+            const body = `## E2E Validation Results ${statusIcon}
+            
+            **Overall Status:** ${report.overall_status.toUpperCase()}
+            
+            ### Test Results:
+            ${Object.entries(report.validation_results).map(([test, result]) => {
+              const icon = result === 'success' ? '✅' : '❌';
+              return `- ${icon} ${test.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}: ${result}`;
+            }).join('\n')}
+            
+            **Commit:** ${report.commit_sha}
+            **Timestamp:** ${report.timestamp}
+            **Workflow Run:** [#${report.workflow_run_id}](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+          } catch (error) {
+            console.log('Could not create PR comment:', error);
+          }

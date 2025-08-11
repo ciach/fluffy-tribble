@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional, Union
 
 from ..core.config import Config
-from ..core.logging_config import get_logger, log_performance
+from ..core.logging_config import get_logger, log_performance_event
 from ..mcp.playwright_client import PlaywrightMCPClient, BrowserMode
 from .models import (
     ExecutionConfig,
@@ -249,7 +249,7 @@ class TestExecutor:
             )
 
             # Log performance
-            log_performance(
+            log_performance_event(
                 self.logger,
                 f"test_execution_{test_name}",
                 result.duration,

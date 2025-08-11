@@ -45,9 +45,10 @@ def temp_e2e_directory():
     with tempfile.TemporaryDirectory() as temp_dir:
         e2e_dir = Path(temp_dir) / "e2e"
         e2e_dir.mkdir()
-        
+
         # Create some sample test files
-        (e2e_dir / "login.spec.ts").write_text("""
+        (e2e_dir / "login.spec.ts").write_text(
+            """
 import { test, expect } from '@playwright/test';
 
 test('user can log in', async ({ page }) => {
@@ -57,10 +58,12 @@ test('user can log in', async ({ page }) => {
   await page.click('[data-testid="submit"]');
   await expect(page.locator('[data-testid="welcome"]')).toBeVisible();
 });
-        """)
-        
+        """
+        )
+
         (e2e_dir / "pages").mkdir()
-        (e2e_dir / "pages" / "signup.spec.ts").write_text("""
+        (e2e_dir / "pages" / "signup.spec.ts").write_text(
+            """
 import { test, expect } from '@playwright/test';
 
 test('user can sign up', async ({ page }) => {
@@ -71,8 +74,9 @@ test('user can sign up', async ({ page }) => {
   await page.click('[data-testid="submit"]');
   await expect(page.locator('[data-testid="success"]')).toBeVisible();
 });
-        """)
-        
+        """
+        )
+
         yield e2e_dir
 
 
@@ -82,15 +86,15 @@ def temp_artifacts_directory():
     with tempfile.TemporaryDirectory() as temp_dir:
         artifacts_dir = Path(temp_dir) / "artifacts"
         artifacts_dir.mkdir()
-        
+
         # Create sample artifacts
         test_run_dir = artifacts_dir / "20240115_103000" / "login_test"
         test_run_dir.mkdir(parents=True)
-        
+
         (test_run_dir / "trace.zip").write_bytes(b"mock trace data")
         (test_run_dir / "screenshot.png").write_bytes(b"mock screenshot data")
         (test_run_dir / "console.log").write_text("console.log('test message')")
-        
+
         yield artifacts_dir
 
 
@@ -103,24 +107,24 @@ def mock_mcp_config_file(tmp_path):
                 "command": "uvx",
                 "args": ["playwright-mcp-server"],
                 "timeout": 30,
-                "max_retries": 3
+                "max_retries": 3,
             },
             "filesystem": {
                 "command": "uvx",
                 "args": ["filesystem-mcp-server", "--sandbox", "e2e/"],
                 "timeout": 30,
-                "max_retries": 3
+                "max_retries": 3,
             },
             "git": {
                 "command": "uvx",
                 "args": ["git-mcp-server"],
                 "timeout": 30,
                 "max_retries": 3,
-                "disabled": False
-            }
+                "disabled": False,
+            },
         }
     }
-    
+
     config_file = tmp_path / "mcp.config.json"
     config_file.write_text(json.dumps(config_data, indent=2))
     return config_file
@@ -143,17 +147,30 @@ def mock_connection_manager():
 def mock_playwright_client():
     """Create a mock Playwright MCP client."""
     client = MagicMock()
-    client.launch_browser = AsyncMock(return_value={"success": True, "browser_id": "browser-123"})
-    client.navigate = AsyncMock(return_value={"success": True, "url": "https://example.com"})
+    client.launch_browser = AsyncMock(
+        return_value={"success": True, "browser_id": "browser-123"}
+    )
+    client.navigate = AsyncMock(
+        return_value={"success": True, "url": "https://example.com"}
+    )
     client.click = AsyncMock(return_value={"success": True, "element_found": True})
     client.fill = AsyncMock(return_value={"success": True, "value": "test input"})
-    client.take_screenshot = AsyncMock(return_value={"success": True, "screenshot_path": "screenshot.png"})
-    client.execute_test = AsyncMock(return_value={
-        "success": True,
-        "test_results": {"passed": 1, "failed": 0, "skipped": 0, "total": 1},
-        "artifacts": {"trace_file": "trace.zip", "screenshots": [], "console_logs": [], "network_logs": []},
-        "duration": 2.5
-    })
+    client.take_screenshot = AsyncMock(
+        return_value={"success": True, "screenshot_path": "screenshot.png"}
+    )
+    client.execute_test = AsyncMock(
+        return_value={
+            "success": True,
+            "test_results": {"passed": 1, "failed": 0, "skipped": 0, "total": 1},
+            "artifacts": {
+                "trace_file": "trace.zip",
+                "screenshots": [],
+                "console_logs": [],
+                "network_logs": [],
+            },
+            "duration": 2.5,
+        }
+    )
     client.close_browser = AsyncMock(return_value={"success": True})
     return client
 
@@ -162,16 +179,20 @@ def mock_playwright_client():
 def mock_filesystem_client():
     """Create a mock Filesystem MCP client."""
     client = MagicMock()
-    client.read_file = AsyncMock(return_value={"success": True, "content": "test file content"})
+    client.read_file = AsyncMock(
+        return_value={"success": True, "content": "test file content"}
+    )
     client.write_file = AsyncMock(return_value={"success": True})
     client.delete_file = AsyncMock(return_value={"success": True})
-    client.list_files = AsyncMock(return_value={
-        "success": True,
-        "files": [
-            {"name": "test.spec.ts", "type": "file", "size": 1024},
-            {"name": "pages", "type": "directory"}
-        ]
-    })
+    client.list_files = AsyncMock(
+        return_value={
+            "success": True,
+            "files": [
+                {"name": "test.spec.ts", "type": "file", "size": 1024},
+                {"name": "pages", "type": "directory"},
+            ],
+        }
+    )
     client.file_exists = AsyncMock(return_value=True)
     client.create_directory = AsyncMock(return_value={"success": True})
     return client
@@ -182,15 +203,23 @@ def mock_git_client():
     """Create a mock Git MCP client."""
     client = MagicMock()
     client.is_available = AsyncMock(return_value=True)
-    client.stage_files = AsyncMock(return_value={"success": True, "staged_files": ["test.spec.ts"]})
-    client.create_commit = AsyncMock(return_value={"success": True, "commit_hash": "abc123"})
-    client.create_pull_request = AsyncMock(return_value={"success": True, "pr_url": "https://github.com/repo/pull/123"})
-    client.get_repository_info = AsyncMock(return_value={
-        "success": True,
-        "repo_name": "test-repo",
-        "branch": "main",
-        "has_changes": True
-    })
+    client.stage_files = AsyncMock(
+        return_value={"success": True, "staged_files": ["test.spec.ts"]}
+    )
+    client.create_commit = AsyncMock(
+        return_value={"success": True, "commit_hash": "abc123"}
+    )
+    client.create_pull_request = AsyncMock(
+        return_value={"success": True, "pr_url": "https://github.com/repo/pull/123"}
+    )
+    client.get_repository_info = AsyncMock(
+        return_value={
+            "success": True,
+            "repo_name": "test-repo",
+            "branch": "main",
+            "has_changes": True,
+        }
+    )
     return client
 
 
@@ -199,12 +228,14 @@ def mock_model_router():
     """Create a mock model router."""
     router = MagicMock()
     router.route_task = MagicMock(return_value="openai")
-    router.call_model = AsyncMock(return_value={
-        "success": True,
-        "response": "Mock AI response",
-        "model_used": "gpt-4",
-        "tokens_used": 150
-    })
+    router.call_model = AsyncMock(
+        return_value={
+            "success": True,
+            "response": "Mock AI response",
+            "model_used": "gpt-4",
+            "tokens_used": 150,
+        }
+    )
     router.is_model_available = MagicMock(return_value=True)
     return router
 
@@ -213,13 +244,17 @@ def mock_model_router():
 def mock_artifact_manager():
     """Create a mock artifact manager."""
     manager = MagicMock()
-    manager.store_artifacts = AsyncMock(return_value={"success": True, "artifact_path": "/tmp/artifacts/test"})
+    manager.store_artifacts = AsyncMock(
+        return_value={"success": True, "artifact_path": "/tmp/artifacts/test"}
+    )
     manager.cleanup_old_artifacts = AsyncMock(return_value={"cleaned_count": 5})
-    manager.get_artifact_info = MagicMock(return_value={
-        "total_size": 1024000,
-        "file_count": 10,
-        "oldest_artifact": "2024-01-01T00:00:00Z"
-    })
+    manager.get_artifact_info = MagicMock(
+        return_value={
+            "total_size": 1024000,
+            "file_count": 10,
+            "oldest_artifact": "2024-01-01T00:00:00Z",
+        }
+    )
     return manager
 
 
@@ -234,10 +269,10 @@ def sample_test_specification():
             "User can log in with valid credentials",
             "User can log out successfully",
             "User can reset password with valid email",
-            "Invalid credentials show appropriate error messages"
+            "Invalid credentials show appropriate error messages",
         ],
         priority="high",
-        tags=["authentication", "security", "user-flow"]
+        tags=["authentication", "security", "user-flow"],
     )
 
 
@@ -246,26 +281,33 @@ def sample_execution_result():
     """Create a sample execution result for testing."""
     return ExecutionResult(
         success=True,
-        test_results={
-            "passed": 3,
-            "failed": 1,
-            "skipped": 0,
-            "total": 4
-        },
+        test_results={"passed": 3, "failed": 1, "skipped": 0, "total": 4},
         artifacts={
             "trace_file": "trace.zip",
             "screenshots": ["login_page.png", "error_state.png"],
             "console_logs": [
-                {"level": "info", "message": "Page loaded", "timestamp": "2024-01-15T10:30:00Z"},
-                {"level": "error", "message": "Login failed", "timestamp": "2024-01-15T10:30:05Z"}
+                {
+                    "level": "info",
+                    "message": "Page loaded",
+                    "timestamp": "2024-01-15T10:30:00Z",
+                },
+                {
+                    "level": "error",
+                    "message": "Login failed",
+                    "timestamp": "2024-01-15T10:30:05Z",
+                },
             ],
             "network_logs": [
-                {"url": "https://api.example.com/login", "method": "POST", "status": 401}
-            ]
+                {
+                    "url": "https://api.example.com/login",
+                    "method": "POST",
+                    "status": 401,
+                }
+            ],
         },
         duration=15.7,
         test_file="auth_flow.spec.ts",
-        status=TestStatus.COMPLETED
+        status=TestStatus.COMPLETED,
     )
 
 
@@ -282,11 +324,11 @@ def sample_failure_analysis():
                 "description": "Update selector to use data-testid",
                 "old_selector": "button.login-btn",
                 "new_selector": "button[data-testid='login-submit']",
-                "confidence": 0.9
+                "confidence": 0.9,
             }
         ],
         artifacts_analyzed=["trace.zip", "screenshot.png", "console.log"],
-        analysis_duration=2.3
+        analysis_duration=2.3,
     )
 
 
@@ -299,8 +341,8 @@ def workflow_context():
         metadata={
             "test_specification_id": "test-spec-001",
             "user_id": "test-user",
-            "environment": "test"
-        }
+            "environment": "test",
+        },
     )
 
 
@@ -351,20 +393,24 @@ def setup_test_environment(tmp_path, monkeypatch):
     # Set up temporary directories
     test_logs_dir = tmp_path / "logs"
     test_logs_dir.mkdir()
-    
+
     test_artifacts_dir = tmp_path / "artifacts"
     test_artifacts_dir.mkdir()
-    
+
     # Set environment variables for testing
     monkeypatch.setenv("QA_OPERATOR_LOG_LEVEL", "DEBUG")
     monkeypatch.setenv("QA_OPERATOR_ARTIFACT_RETENTION_DAYS", "1")
     monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-    
+
     # Mock file paths
-    monkeypatch.setattr("orchestrator.core.config.Config.get_log_file_path", 
-                       lambda self: test_logs_dir / "qa-operator.log")
-    monkeypatch.setattr("orchestrator.core.config.Config.get_debug_log_dir", 
-                       lambda self: test_logs_dir / "debug")
+    monkeypatch.setattr(
+        "orchestrator.core.config.Config.get_log_file_path",
+        lambda self: test_logs_dir / "qa-operator.log",
+    )
+    monkeypatch.setattr(
+        "orchestrator.core.config.Config.get_debug_log_dir",
+        lambda self: test_logs_dir / "debug",
+    )
 
 
 @pytest.fixture
@@ -380,16 +426,12 @@ def mock_openai_response():
                 "index": 0,
                 "message": {
                     "role": "assistant",
-                    "content": "This is a mock response from OpenAI API for testing purposes."
+                    "content": "This is a mock response from OpenAI API for testing purposes.",
                 },
-                "finish_reason": "stop"
+                "finish_reason": "stop",
             }
         ],
-        "usage": {
-            "prompt_tokens": 50,
-            "completion_tokens": 20,
-            "total_tokens": 70
-        }
+        "usage": {"prompt_tokens": 50, "completion_tokens": 20, "total_tokens": 70},
     }
 
 
@@ -407,7 +449,7 @@ def mock_ollama_response():
         "prompt_eval_count": 50,
         "prompt_eval_duration": 200000000,
         "eval_count": 20,
-        "eval_duration": 800000000
+        "eval_duration": 800000000,
     }
 
 
@@ -420,15 +462,9 @@ def async_test_timeout():
 
 def pytest_configure(config):
     """Configure pytest with custom markers."""
-    config.addinivalue_line(
-        "markers", "integration: mark test as integration test"
-    )
-    config.addinivalue_line(
-        "markers", "slow: mark test as slow running"
-    )
-    config.addinivalue_line(
-        "markers", "mcp: mark test as requiring MCP servers"
-    )
+    config.addinivalue_line("markers", "integration: mark test as integration test")
+    config.addinivalue_line("markers", "slow: mark test as slow running")
+    config.addinivalue_line("markers", "mcp: mark test as requiring MCP servers")
 
 
 def pytest_collection_modifyitems(config, items):
@@ -437,11 +473,14 @@ def pytest_collection_modifyitems(config, items):
         # Mark integration tests
         if "integration" in item.nodeid:
             item.add_marker(pytest.mark.integration)
-        
+
         # Mark slow tests
         if "slow" in item.name or "performance" in item.name:
             item.add_marker(pytest.mark.slow)
-        
+
         # Mark MCP tests
-        if any(keyword in item.nodeid for keyword in ["mcp", "connection", "playwright", "filesystem"]):
+        if any(
+            keyword in item.nodeid
+            for keyword in ["mcp", "connection", "playwright", "filesystem"]
+        ):
             item.add_marker(pytest.mark.mcp)

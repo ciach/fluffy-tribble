@@ -239,18 +239,20 @@ class TestCodePatcher:
         # Mock file operations
         mock_filesystem_client.read_file = AsyncMock(return_value=sample_test_content)
 
-        patch = await code_patcher.create_patch_from_suggestion(
-            sample_fix_suggestion, "e2e/test.spec.ts"
-        )
+        # Mock file existence check
+        with patch("pathlib.Path.exists", return_value=True):
+            result_patch = await code_patcher.create_patch_from_suggestion(
+                sample_fix_suggestion, "e2e/test.spec.ts"
+            )
 
         # Verify patch
-        assert isinstance(patch, CodePatch)
-        assert patch.target_file == "e2e/test.spec.ts"
-        assert patch.operation == PatchOperation.REPLACE_LINE
-        assert patch.start_line == 4
-        assert patch.confidence == ConfidenceLevel.HIGH
-        assert patch.requires_backup is True
-        assert patch.requires_validation is True
+        assert isinstance(result_patch, CodePatch)
+        assert result_patch.target_file == "e2e/test.spec.ts"
+        assert result_patch.operation == PatchOperation.REPLACE_LINE
+        assert result_patch.start_line == 4
+        assert result_patch.confidence == ConfidenceLevel.HIGH
+        assert result_patch.requires_backup is True
+        assert result_patch.requires_validation is True
 
     @pytest.mark.asyncio
     async def test_detect_flaky_test(self, code_patcher, mock_filesystem_client):
@@ -356,18 +358,15 @@ class TestCodePatcher:
 
     @pytest.mark.asyncio
     async def test_validate_patch_preconditions_outside_e2e(
-        self, code_patcher, sample_patch
+        self, code_patcher, sample_patch, mock_filesystem_client, sample_test_content
     ):
         """Test validation when file is outside e2e directory."""
-        sample_patch.target_file = "/etc/passwd"  # Outside e2e
+        sample_patch.target_file = "outside/test.spec.ts"  # Outside e2e
 
-        with patch("pathlib.Path.exists", return_value=True), patch(
-            "pathlib.Path.resolve"
-        ) as mock_resolve:
+        # Mock filesystem client read_file method
+        mock_filesystem_client.read_file = AsyncMock(return_value=sample_test_content)
 
-            # Mock resolve to return paths outside e2e
-            mock_resolve.side_effect = lambda: Path("/etc/passwd")
-
+        with patch("pathlib.Path.exists", return_value=True):
             with pytest.raises(ValidationError) as exc_info:
                 await code_patcher._validate_patch_preconditions(sample_patch)
 

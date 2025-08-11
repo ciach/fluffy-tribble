@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional, Set, Union
 
 from ..core.config import Config
-from ..core.logging_config import get_logger, log_performance
+from ..core.logging_config import get_logger, log_performance_event
 from .models import ArtifactMetadata, ArtifactType
 
 
@@ -354,6 +354,7 @@ class ArtifactManager:
                 "freed_space": 0,
                 "duration": time.time() - start_time,
                 "dry_run": dry_run,
+                "errors": [],
             }
 
         deleted_count = 0
@@ -412,7 +413,7 @@ class ArtifactManager:
             },
         )
 
-        log_performance(
+        log_performance_event(
             self.logger,
             "artifact_cleanup",
             duration,
@@ -431,10 +432,13 @@ class ArtifactManager:
         """
         removed_count = 0
 
-        # Walk the directory tree bottom-up
-        for root, dirs, files in self.artifacts_root.walk(top_down=False):
+        # Walk the directory tree bottom-up using os.walk
+        import os
+
+        for root, dirs, files in os.walk(self.artifacts_root, topdown=False):
+            root_path = Path(root)
             for dir_name in dirs:
-                dir_path = root / dir_name
+                dir_path = root_path / dir_name
                 try:
                     # Try to remove if empty
                     if not any(dir_path.iterdir()):

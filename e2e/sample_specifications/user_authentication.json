@@ -1,0 +1,42 @@
+{
+  "id": "auth-flow-001",
+  "name": "User Authentication Flow",
+  "description": "Complete user authentication workflow including login, logout, and password reset functionality",
+  "requirements": [
+    "User can log in with valid email and password",
+    "User can log out successfully and be redirected to login page",
+    "User can reset password using valid email address",
+    "Invalid login credentials show appropriate error messages",
+    "Password reset email is sent for valid email addresses",
+    "User session persists across page refreshes when logged in",
+    "User is redirected to login page when accessing protected routes while logged out"
+  ],
+  "priority": "high",
+  "tags": ["authentication", "security", "user-flow", "critical-path"],
+  "metadata": {
+    "test_data": {
+      "valid_user": {
+        "email": "test.user@example.com",
+        "password": "SecurePassword123!"
+      },
+      "invalid_credentials": [
+        {"email": "invalid@example.com", "password": "wrongpassword"},
+        {"email": "test.user@example.com", "password": "wrongpassword"},
+        {"email": "invalid-email", "password": "SecurePassword123!"}
+      ],
+      "reset_email": "test.user@example.com"
+    },
+    "expected_pages": [
+      "/login",
+      "/dashboard",
+      "/forgot-password",
+      "/reset-password"
+    ],
+    "success_criteria": {
+      "login_success_indicator": "[data-testid='user-menu']",
+      "logout_success_indicator": "[data-testid='login-form']",
+      "error_message_selector": "[data-testid='error-message']",
+      "reset_confirmation_selector": "[data-testid='reset-sent-message']"
+    }
+  }
+}
